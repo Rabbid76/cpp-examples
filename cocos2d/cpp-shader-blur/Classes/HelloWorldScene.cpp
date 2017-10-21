@@ -95,6 +95,10 @@ void HelloWorld::menuCloseCallback(Ref* pSender)
 
 void HelloWorld::update(float delta)
 {
+  static bool blur = true;
+  if ( blur == false )
+    return;
+
   Size visibleSize = Director::getInstance()->getVisibleSize();
   std::chrono::high_resolution_clock::time_point currentTime = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double, std::milli> deltaTime = currentTime - _startTime;
