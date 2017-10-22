@@ -37,7 +37,7 @@ bool HelloWorld::init()
   if ( m_blurFast )
   {
     // blur fast layer
-	  m_blurFast_PostProcessLayer = PostProcess::create("shader/blur_fast.vert", "shader/blur_fast.frag");
+	  m_blurFast_PostProcessLayer = PostProcess::create("shader/blur_fast3.vert", "shader/blur_fast3.frag");
 	  m_blurFast_PostProcessLayer->setAnchorPoint(Point::ZERO);
 	  m_blurFast_PostProcessLayer->setPosition(Point::ZERO);
 	  this->addChild(m_blurFast_PostProcessLayer, 1);
@@ -121,8 +121,8 @@ void HelloWorld::update(float delta)
   if ( m_blurFast )
   {
     cocos2d::GLProgramState &blurFaststate = m_blurFast_PostProcessLayer->ProgramState();
-    blurFaststate.setUniformVec2( "u_texelOffset", Vec2( 1.0f/visibleSize.width, 1.0f/visibleSize.height ) ); 
-    blurFaststate.setUniformFloat( "u_blurStrength", (float)blurStrength );
+    blurFaststate.setUniformVec2( "u_texelOffset", Vec2( blurStrength*5.0f/visibleSize.width, blurStrength*5.0f/visibleSize.height ) ); 
+    //blurFaststate.setUniformFloat( "u_blurStrength", (float)blurStrength );
       
     m_blurFast_PostProcessLayer->draw(m_gameLayer);
   }
