@@ -34,7 +34,7 @@ bool BlurLayer::init()
 	this->addChild(m_gameLayer, 0);
 
   // blur fast layer
-	m_blur_PostProcessLayer = PostProcess::create("shader/blur_fast4.vert", "shader/blur_fast4.frag");
+	m_blur_PostProcessLayer = PostProcess::create("shader/blur_fast5.vert", "shader/blur_fast5.frag");
 	m_blur_PostProcessLayer->setAnchorPoint(Point::ZERO);
 	m_blur_PostProcessLayer->setPosition(Point::ZERO);
 	this->addChild(m_blur_PostProcessLayer, 1);
@@ -103,7 +103,7 @@ void BlurLayer::update(float delta)
 
 
   cocos2d::GLProgramState &blurFaststate = m_blur_PostProcessLayer->ProgramState();
-  blurFaststate.setUniformVec2( "u_texelOffset", Vec2( blurStrength*10.0f/visibleSize.width, blurStrength*5.0f/visibleSize.height ) ); 
+  blurFaststate.setUniformVec2( "u_texelOffset", Vec2( blurStrength*10.0f/visibleSize.width, blurStrength*10.0f/visibleSize.height ) ); 
   //blurFaststate.setUniformFloat( "u_blurStrength", (float)blurStrength );
       
   m_gameLayer->setVisible( true );
