@@ -13,8 +13,10 @@ public:
 	static PostProcess* create(const std::string& vertexShaderFile, const std::string& fragmentShaderFile);
 	virtual bool init(const std::string& vertexShaderFile, const std::string& fragmentShaderFile);
 	void draw(cocos2d::Layer* layer);
-  cocos2d::GLProgram      & Program( void )      { return *_program; }
-  cocos2d::GLProgramState & ProgramState( void ) { return *_progState; }
+  cocos2d::GLProgram      & Program( void )          { return *_program; }
+  cocos2d::GLProgramState & ProgramState( void )     { return *_progState; }
+  cocos2d::RenderTexture  & GetRenderTexture( void ) { return *_renderTexture; }
+  cocos2d::Sprite         & GetSprite( void )        { return *_sprite; }
 private:
   cocos2d::GLProgram       *_program;
   cocos2d::GLProgramState  *_progState;

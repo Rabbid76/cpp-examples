@@ -6,6 +6,7 @@
 
 class PostProcess;
 
+
 // http://discuss.cocos2d-x.org/t/how-can-i-add-a-post-process-shader/33352/2
 // http://discuss.cocos2d-x.org/t/big-window-small-framebuffer/23711/3
 // http://discuss.cocos2d-x.org/t/implementing-shader-on-whole-scene-not-on-a-single-sprite-solved/28506
@@ -27,7 +28,9 @@ class BlurLayer
 {
 private:
 	cocos2d::Layer* m_gameLayer;
-	PostProcess* m_blur_PostProcessLayer;
+	PostProcess* m_blur_PostProcessLayer1;
+  PostProcess* m_blur_PostProcessLayer2;
+  cocos2d::RenderTexture *m_renderTexture1;
   
 public:
     virtual bool init();

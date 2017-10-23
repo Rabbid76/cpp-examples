@@ -44,7 +44,8 @@ bool PostProcess::init(const std::string& vertexShaderFile, const std::string& f
 
 void PostProcess::draw(cocos2d::Layer* layer)
 {
-	  _renderTexture->beginWithClear(0.0f, 0.0f, 0.0f, 0.0f);
+	  //_renderTexture->beginWithClear(0.0f, 0.0f, 0.0f, 0.0f);
+    _renderTexture->begin();
 	  layer->visit();
     _renderTexture->end();
 }
