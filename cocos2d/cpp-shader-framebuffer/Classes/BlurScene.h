@@ -28,9 +28,10 @@ class BlurLayer
 {
 private:
 	cocos2d::Layer* m_gameLayer;
-	PostProcess* m_blur_PostProcessLayer1;
-  PostProcess* m_blur_PostProcessLayer2;
-  cocos2d::RenderTexture *m_renderTexture1;
+	PostProcess*    m_blur_PostProcessLayerEven;
+  PostProcess*    m_blur_PostProcessLayerOdd;
+  bool            m_blur = false;
+  size_t          m_blurTick = 0;
   
 public:
     virtual bool init();

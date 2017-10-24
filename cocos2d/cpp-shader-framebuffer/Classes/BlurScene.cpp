@@ -30,26 +30,23 @@ bool BlurLayer::init()
 
 	m_gameLayer = Layer::create();
   m_gameLayer->setVisible( false );
-  //m_gameLayer->setCameraMask((unsigned short)CameraFlag::USER1);
-	this->addChild(m_gameLayer, 0);
+  this->addChild(m_gameLayer, 0);
 
-  // blur fast layer
-	m_blur_PostProcessLayer1 = PostProcess::create("shader/blur_fast2.vert", "shader/blur_fast2.frag");
-  m_blur_PostProcessLayer1->setVisible( false );
-	m_blur_PostProcessLayer1->setAnchorPoint(Point::ZERO);
-	m_blur_PostProcessLayer1->setPosition(Point::ZERO);
-	this->addChild(m_blur_PostProcessLayer1, 1);
+  // blur layer even
+	m_blur_PostProcessLayerEven = PostProcess::create("shader/blur_fast6.vert", "shader/blur_fast6.frag");
+  m_blur_PostProcessLayerEven->setVisible( false );
+	m_blur_PostProcessLayerEven->setAnchorPoint(Point::ZERO);
+	m_blur_PostProcessLayerEven->setPosition(Point::ZERO);
+	this->addChild(m_blur_PostProcessLayerEven, 1);
 
-  m_blur_PostProcessLayer2 = PostProcess::create("shader/blur_fast2.vert", "shader/blur_fast2.frag");
-  m_blur_PostProcessLayer2->setVisible( true );
-	m_blur_PostProcessLayer2->setAnchorPoint(Point::ZERO);
-	m_blur_PostProcessLayer2->setPosition(Point::ZERO);
-	this->addChild(m_blur_PostProcessLayer2, 1);
+  // blur layer odd
+  m_blur_PostProcessLayerOdd = PostProcess::create("shader/blur_fast6.vert", "shader/blur_fast6.frag");
+  m_blur_PostProcessLayerOdd->setVisible( false );
+	m_blur_PostProcessLayerOdd->setAnchorPoint(Point::ZERO);
+	m_blur_PostProcessLayerOdd->setPosition(Point::ZERO);
+	this->addChild(m_blur_PostProcessLayerOdd, 1);
   
-  //m_renderTexture1 = RenderTexture::create(visibleSize.width, visibleSize.height);
-
-
-
+  
 	auto closeItem = MenuItemImage::create(
                                            "CloseNormal.png",
                                            "CloseSelected.png",
@@ -99,48 +96,41 @@ void BlurLayer::menuCloseCallback(Ref* pSender)
 
 void BlurLayer::update(float delta)
 {
-  //update( delta );
-  static bool blur = true;
-  if ( blur == false )
-    return;
-
   Size visibleSize = Director::getInstance()->getVisibleSize();
   std::chrono::high_resolution_clock::time_point currentTime = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double, std::milli> deltaTime = currentTime - _startTime;
-  double blurStrength = (deltaTime.count() / 3000.0);
-  blurStrength = (blurStrength - (int)blurStrength ) * 2.0;
-  blurStrength = (blurStrength) > 1.0 ? (2.0 - blurStrength) : blurStrength;
+  double blurTrigger = (deltaTime.count() / 5000.0);
+  blurTrigger = (blurTrigger - (int)blurTrigger ) * 2.0;
 
-
-  cocos2d::GLProgramState &blurFaststate = m_blur_PostProcessLayer1->ProgramState();
-  //blurFaststate.setUniformVec2( "u_texelOffset", Vec2( blurStrength*10.0f/visibleSize.width, blurStrength*10.0f/visibleSize.height ) );
-  //blurFaststate.setUniformFloat( "u_blurStrength", (float)blurStrength );
-
-  cocos2d::GLProgramState &blurFaststate1 = m_blur_PostProcessLayer1->ProgramState();
-  blurFaststate1.setUniformVec2( "u_texelOffset", Vec2( 1.0f/visibleSize.width, 1.0f/visibleSize.height ) );
-  cocos2d::GLProgramState &blurFaststate2 = m_blur_PostProcessLayer2->ProgramState();
-  blurFaststate2.setUniformVec2( "u_texelOffset", Vec2( 1.0f/visibleSize.width, 1.0f/visibleSize.height ) );
-      
-  static bool first = true;
-  if ( first )
+  bool even = (m_blurTick % 2) == 0;
+  if ( m_blur )
   {
-    first = false;
-    m_gameLayer->setVisible( true );
-    m_blur_PostProcessLayer1->draw(m_gameLayer);
-    m_gameLayer->setVisible( false );
+    cocos2d::GLProgramState &blurFaststate1 = m_blur_PostProcessLayerEven->ProgramState();
+    blurFaststate1.setUniformVec2( "u_texelOffset", Vec2( 1.0f/visibleSize.width, 1.0f/visibleSize.height ) );
+    cocos2d::GLProgramState &blurFaststate2 = m_blur_PostProcessLayerOdd->ProgramState();
+    blurFaststate2.setUniformVec2( "u_texelOffset", Vec2( -1.0f/visibleSize.width, -1.0f/visibleSize.height ) );
+      
+    if ( m_blurTick == 0 )
+    {
+      m_gameLayer->setVisible( true );
+      m_blur_PostProcessLayerEven->draw(m_gameLayer);
+    }
+    else if ( even )
+    {
+      m_blur_PostProcessLayerEven->draw(m_blur_PostProcessLayerOdd);
+    }
+    else
+    {
+      m_blur_PostProcessLayerOdd->draw(m_blur_PostProcessLayerEven);
+    }
+    ++m_blurTick;
   }
 
-  m_blur_PostProcessLayer2->Program().updateUniforms();
-  m_blur_PostProcessLayer1->setVisible( true );
-  m_blur_PostProcessLayer2->draw(m_blur_PostProcessLayer1);
-  m_blur_PostProcessLayer1->setVisible( false );
-
-  cocos2d::RenderTexture &renderTex1 = m_blur_PostProcessLayer1->GetRenderTexture();
-  cocos2d::RenderTexture &renderTex2 = m_blur_PostProcessLayer2->GetRenderTexture();
-  cocos2d::Sprite *sprite1 = renderTex1.getSprite();
-  cocos2d::Sprite *sprite2 = renderTex2.getSprite();
-  cocos2d::Texture2D *tex1 = sprite1->getTexture();
-  cocos2d::Texture2D *tex2 = sprite2->getTexture();
-  sprite1->setTexture( tex2 );
-  sprite2->setTexture( tex1 );
+  m_blur = blurTrigger < 1.0;
+  if ( m_blur == false )
+    m_blurTick = 0;
+  
+  m_gameLayer->setVisible( !m_blur );
+  m_blur_PostProcessLayerEven->setVisible( m_blur && even );
+  m_blur_PostProcessLayerOdd->setVisible( m_blur && !even );
 }
