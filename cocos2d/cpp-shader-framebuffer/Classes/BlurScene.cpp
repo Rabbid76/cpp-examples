@@ -33,14 +33,14 @@ bool BlurLayer::init()
   this->addChild(m_gameLayer, 0);
 
   // blur layer even
-	m_blur_PostProcessLayerEven = PostProcess::create("shader/blur_fast6.vert", "shader/blur_fast6.frag");
+	m_blur_PostProcessLayerEven = PostProcess::create("shader/blur_fast2.vert", "shader/blur_fast2.frag");
   m_blur_PostProcessLayerEven->setVisible( false );
 	m_blur_PostProcessLayerEven->setAnchorPoint(Point::ZERO);
 	m_blur_PostProcessLayerEven->setPosition(Point::ZERO);
 	this->addChild(m_blur_PostProcessLayerEven, 1);
 
   // blur layer odd
-  m_blur_PostProcessLayerOdd = PostProcess::create("shader/blur_fast6.vert", "shader/blur_fast6.frag");
+  m_blur_PostProcessLayerOdd = PostProcess::create("shader/blur_fast2.vert", "shader/blur_fast2.frag");
   m_blur_PostProcessLayerOdd->setVisible( false );
 	m_blur_PostProcessLayerOdd->setAnchorPoint(Point::ZERO);
 	m_blur_PostProcessLayerOdd->setPosition(Point::ZERO);
