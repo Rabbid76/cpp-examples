@@ -159,7 +159,7 @@ std::string GPUimageBlur::GenerateVertexShaderString( int radius, float sigma )
         strStr << "void main()\n";
         strStr << "{\n";
         strStr << "  gl_Position = CC_MVPMatrix * a_position;\n";
-        strStr << "  texCoord = a_texCoord;\n";
+        strStr << "  texCoord = a_texCoord.xy;\n";
         strStr << "}\n";
         return strStr.str();
     }
@@ -237,7 +237,7 @@ std::string GPUimageBlur::GenerateOptimizedVertexShaderString( int radius, float
         strStr << "void main()\n";
         strStr << "{\n";
         strStr << "  gl_Position = CC_MVPMatrix * a_position;\n";
-        strStr << "  texCoord = a_texCoord;\n";
+        strStr << "  texCoord = a_texCoord.xy;\n";
         strStr << "}\n";
         return strStr.str();
     }
