@@ -178,11 +178,12 @@ std::string GPUimageBlur::GenerateVertexShaderString( int radius, float sigma )
         if (offsetFromCenter == 0)
             strStr << "  blurCoordinates[" << i << "] = a_texCoord.xy;\n";
         else
-            strStr << "blurCoordinates[" << i << "] = a_texCoord.xy  + u_texelOffset * " << (float)offsetFromCenter << ";\n";
+            strStr << "  blurCoordinates[" << i << "] = a_texCoord.xy  + u_texelOffset * " << (float)offsetFromCenter << ";\n";
     }
     strStr << "}\n";
     return strStr.str();
 }
+
 
 std::string GPUimageBlur::GenerateFragmentShaderString( int radius, float sigma )
 {
@@ -215,20 +216,149 @@ std::string GPUimageBlur::GenerateFragmentShaderString( int radius, float sigma 
     strStr << "void main()\n";
     strStr << "{\n";
     strStr << "  gl_FragColor = vec4(0.0);\n";
-    for (int i = 0; i < radius * 2 + 1; ++i) {
+    for (int i = 0; i < radius * 2 + 1; ++i)
+    {
         int offsetFromCenter = i - radius;
-        strStr << "gl_FragColor += texture2D(CC_Texture0, blurCoordinates[" << i << "]) * " << standardGaussianWeights[abs(offsetFromCenter)] << ";\n";
+        strStr << "  gl_FragColor += texture2D(CC_Texture0, blurCoordinates[" << i << "]) * " << standardGaussianWeights[abs(offsetFromCenter)] << ";\n";
     }
     strStr << "}\n";
     return strStr.str();
 }
 
+
 std::string GPUimageBlur::GenerateOptimizedVertexShaderString( int radius, float sigma )
 {
-  return "";
+    if (radius < 1 || sigma <= 0.0)
+    {
+        std::stringstream strStr;
+        strStr << "attribute vec4 a_position;\n";
+        strStr << "attribute vec4 a_texCoord;\n";
+        strStr << "varying vec2 texCoord;\n";
+        strStr << "void main()\n";
+        strStr << "{\n";
+        strStr << "  gl_Position = CC_MVPMatrix * a_position;\n";
+        strStr << "  texCoord = a_texCoord;\n";
+        strStr << "}\n";
+        return strStr.str();
+    }
+
+    // 1. generate the normal Gaussian weights for a given sigma
+    std::vector<float> standardGaussianWeights(radius + 2);
+    float sumOfWeights = 0.0;
+    for (int i = 0; i < radius + 1; ++i)
+    {
+        standardGaussianWeights[i] = (1.0 / sqrt(2.0 * M_PI * pow(sigma, 2.0))) * exp(-pow(i, 2.0) / (2.0 * pow(sigma, 2.0)));
+        if (i == 0)
+            sumOfWeights += standardGaussianWeights[i];
+        else
+            sumOfWeights += 2.0 * standardGaussianWeights[i];
+    }
+    
+    // 2. normalize these weights to prevent the clipping of the Gaussian curve at the end of the discrete samples from reducing luminance
+    for (int i = 0; i < radius + 1; ++i)
+    {
+        standardGaussianWeights[i] = standardGaussianWeights[i] / sumOfWeights;
+    }
+    
+    // 3. From these weights we calculate the offsets to read interpolated values from
+    int numberOfOptimizedOffsets = fmin(radius / 2 + (radius % 2), 7);
+    std::vector<float> optimizedGaussianOffsets(numberOfOptimizedOffsets);
+    
+    for (int i = 0; i < numberOfOptimizedOffsets; ++i)
+    {
+        GLfloat firstWeight = standardGaussianWeights[i * 2 + 1];
+        GLfloat secondWeight = standardGaussianWeights[i * 2 + 2];
+        
+        GLfloat optimizedWeight = firstWeight + secondWeight;
+        
+        optimizedGaussianOffsets[i] = (firstWeight * (i * 2 + 1) + secondWeight * (i * 2 + 2)) / optimizedWeight;
+    }
+
+    std::stringstream strStr;
+    strStr << "attribute vec4 a_position;\n";
+    strStr << "attribute vec4 a_texCoord;\n";
+    strStr << "uniform vec2 u_texelOffset;\n";
+    strStr << "varying vec2 blurCoordinates[" << numberOfOptimizedOffsets * 2 + 1 << "];\n";
+    strStr << "void main()\n";
+    strStr << "{\n";
+    strStr << "  gl_Position = CC_MVPMatrix * a_position;\n";
+    strStr << "  blurCoordinates[0] = a_texCoord.xy;\n";
+    for (int i = 0; i < numberOfOptimizedOffsets; ++i)
+    {
+      strStr << "blurCoordinates[" << i * 2 + 1 << "] = a_texCoord.xy + u_texelOffset * " << (float)optimizedGaussianOffsets[i] << ";\n";
+      strStr << "blurCoordinates[" << i * 2 + 2 << "] = a_texCoord.xy - u_texelOffset * " << (float)optimizedGaussianOffsets[i] << ";\n";
+    }
+    strStr << "}\n";
+    return strStr.str();
 }
+
 
 std::string GPUimageBlur::GenerateOptimizedFragmentShaderString( int radius, float sigma )
 {
-  return "";
+    if (radius < 1 || sigma <= 0.0)
+    {
+        std::stringstream strStr;
+        strStr << "varying vec2 texCoord;\n";
+        strStr << "void main()\n";
+        strStr << "{\n";
+        strStr << "  gl_FragColor = texture2D(CC_Texture0, texCoord);\n";
+        strStr << "}\n";
+        return strStr.str();
+    }
+
+    // 1. generate the normal Gaussian weights for a given sigma
+    std::vector<float> standardGaussianWeights(radius + 2);
+    float sumOfWeights = 0.0;
+    for (int i = 0; i < radius + 1; ++i)
+    {
+        standardGaussianWeights[i] = (1.0 / sqrt(2.0 * M_PI * pow(sigma, 2.0))) * exp(-pow(i, 2.0) / (2.0 * pow(sigma, 2.0)));
+        if (i == 0)
+            sumOfWeights += standardGaussianWeights[i];
+        else
+            sumOfWeights += 2.0 * standardGaussianWeights[i];
+    }
+    
+    // 2. normalize these weights to prevent the clipping of the Gaussian curve at the end of the discrete samples from reducing luminance
+    for (int i = 0; i < radius + 1; ++i)
+    {
+        standardGaussianWeights[i] = standardGaussianWeights[i] / sumOfWeights;
+    }
+    
+    // 3. From these weights we calculate the offsets to read interpolated values from
+    int trueNumberOfOptimizedOffsets = radius / 2 + (radius % 2);
+    int numberOfOptimizedOffsets = fmin(trueNumberOfOptimizedOffsets, 7);
+
+    std::stringstream strStr;
+    strStr << "varying vec2 blurCoordinates[" << numberOfOptimizedOffsets * 2 + 1 << "];\n";
+    strStr << "uniform vec2 u_texelOffset;\n";
+    strStr << "void main()\n";
+    strStr << "{\n";
+    strStr << "  gl_FragColor = vec4(0.0);\n";
+    strStr << "  gl_FragColor += texture2D(CC_Texture0, blurCoordinates[0]) * " << standardGaussianWeights[0] << ";\n";
+    for (int i = 0; i < numberOfOptimizedOffsets; ++i)
+    {
+        float firstWeight = standardGaussianWeights[i * 2 + 1];
+        float secondWeight = standardGaussianWeights[i * 2 + 2];
+        float optimizedWeight = firstWeight + secondWeight;
+
+        strStr << "  gl_FragColor += texture2D(CC_Texture0, blurCoordinates[" << i * 2 + 1 << "]) * " << optimizedWeight << ";\n";
+        strStr << "  gl_FragColor += texture2D(CC_Texture0, blurCoordinates[" << i * 2 + 2 << "]) * " << optimizedWeight << ";\n";
+    }
+    // If the number of required samples exceeds the amount we can pass in via varyings, we have to do dependent texture reads in the fragment shader
+    if (trueNumberOfOptimizedOffsets > numberOfOptimizedOffsets)
+    {
+        for (int i = numberOfOptimizedOffsets; i < trueNumberOfOptimizedOffsets; i++)
+        {
+            float firstWeight = standardGaussianWeights[i * 2 + 1];
+            float secondWeight = standardGaussianWeights[i * 2 + 2];
+            
+            float optimizedWeight = firstWeight + secondWeight;
+            float optimizedOffset = (firstWeight * (i * 2 + 1) + secondWeight * (i * 2 + 2)) / optimizedWeight;
+            
+            strStr << "  gl_FragColor += texture2D(CC_Texture0, blurCoordinates[0] + u_texelOffset * " << optimizedOffset << ") * " << optimizedWeight << ";\n";
+            strStr << "  gl_FragColor += texture2D(CC_Texture0, blurCoordinates[0] - u_texelOffset * " << optimizedOffset << ") * " << optimizedWeight << ";\n";
+        }
+    }
+    strStr << "}\n";
+    return strStr.str();
 }
