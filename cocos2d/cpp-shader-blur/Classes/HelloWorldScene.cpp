@@ -34,36 +34,23 @@ bool HelloWorld::init()
 	m_gameLayer = Layer::create();
 	this->addChild(m_gameLayer, 0);
 
-  if ( m_blurFast )
-  {
-    // blur fast layer
-	  m_blurFast_PostProcessLayer = PostProcess::create("shader/blur_fast.vert", "shader/blur_fast.frag");
-	  m_blurFast_PostProcessLayer->setAnchorPoint(Point::ZERO);
-	  m_blurFast_PostProcessLayer->setPosition(Point::ZERO);
-	  this->addChild(m_blurFast_PostProcessLayer, 1);
-  }
-  else
-  {
-    // blur X layer
-	  m_blurX_PostProcessLayer = PostProcess::create("shader/blur.vert", "shader/blur.frag");
-	  m_blurX_PostProcessLayer->setAnchorPoint(Point::ZERO);
-	  m_blurX_PostProcessLayer->setPosition(Point::ZERO);
-	  this->addChild(m_blurX_PostProcessLayer, 1);
+  const char * vertShader = m_blurFast ? "shader/blur_fast.vert" : "shader/blur.vert";
+  const char * fragShader = m_blurFast ? "shader/blur_fast.frag" : "shader/blur.frag";
 
-    // blur y layer
-	  m_blurY_PostProcessLayer = PostProcess::create("shader/blur.vert", "shader/blur.frag");
-	  m_blurY_PostProcessLayer->setAnchorPoint(Point::ZERO);
-	  m_blurY_PostProcessLayer->setPosition(Point::ZERO);
-	  this->addChild(m_blurY_PostProcessLayer, 2);
-  }
+  // blur pass 1
+	m_blurPass1_PostProcessLayer = PostProcess::create(vertShader, fragShader);
+	m_blurPass1_PostProcessLayer->setAnchorPoint(Point::ZERO);
+	m_blurPass1_PostProcessLayer->setPosition(Point::ZERO);
+	this->addChild(m_blurPass1_PostProcessLayer, 1);
 
-	auto closeItem = MenuItemImage::create(
-                                           "CloseNormal.png",
-                                           "CloseSelected.png",
-                                           CC_CALLBACK_1(HelloWorld::menuCloseCallback, this));
-    
-	closeItem->setPosition(Vec2(origin.x + visibleSize.width - closeItem->getContentSize().width/2 ,
-                                origin.y + closeItem->getContentSize().height/2));
+  // blur pass 2
+	m_blurPass2_PostProcessLayer = PostProcess::create(vertShader, fragShader);
+	m_blurPass2_PostProcessLayer->setAnchorPoint(Point::ZERO);
+	m_blurPass2_PostProcessLayer->setPosition(Point::ZERO);
+	this->addChild(m_blurPass2_PostProcessLayer, 2);
+
+	auto closeItem = MenuItemImage::create("CloseNormal.png", "CloseSelected.png", CC_CALLBACK_1(HelloWorld::menuCloseCallback, this));
+	closeItem->setPosition(Vec2(origin.x + visibleSize.width - closeItem->getContentSize().width/2, origin.y + closeItem->getContentSize().height/2));
 
     // create menu, it's an autorelease object
     auto menu = Menu::create(closeItem, NULL);
@@ -72,17 +59,12 @@ bool HelloWorld::init()
   m_gameLayer->addChild(menu, 1);
   
     auto label = Label::createWithTTF("Hello World", "fonts/Marker Felt.ttf", 24);
-    
-    // position the label on the center of the screen
-    label->setPosition(Vec2(origin.x + visibleSize.width/2,
-                            origin.y + visibleSize.height - label->getContentSize().height));
+    label->setPosition(Vec2(origin.x + visibleSize.width/2, origin.y + visibleSize.height - label->getContentSize().height));
 
 	m_gameLayer->addChild(label, 1);
 
     // add "HelloWorld" splash screen"
     auto sprite = Sprite::create("HelloWorld.png");
-
-    // position the sprite on the center of the screen
     sprite->setPosition(Vec2(visibleSize.width/2 + origin.x, visibleSize.height/2 + origin.y));
 
 	m_gameLayer->addChild(sprite, 0);
@@ -107,6 +89,10 @@ void HelloWorld::menuCloseCallback(Ref* pSender)
 void HelloWorld::update(float delta)
 {
   static bool blur = true;
+  m_gameLayer->setVisible( !blur );
+  m_blurPass1_PostProcessLayer->setVisible( false );
+  m_blurPass2_PostProcessLayer->setVisible( blur );
+
   if ( blur == false )
     return;
 
@@ -115,33 +101,38 @@ void HelloWorld::update(float delta)
   std::chrono::duration<double, std::milli> deltaTime = currentTime - _startTime;
   double blurStrength = (deltaTime.count() / 3000.0);
   blurStrength = (blurStrength - (int)blurStrength ) * 2.0;
-  blurStrength = (blurStrength) > 1.0 ? (2.0 - blurStrength) : blurStrength;
-
-
+  if ( m_blurFast )
+    blurStrength = (blurStrength) > 1.0 ? 1.0 : 0.0;
+  else
+    blurStrength = (blurStrength) > 1.0 ? (2.0 - blurStrength) : blurStrength;
+  
+  // blur pass 1
+  cocos2d::GLProgramState &blurPass1state = m_blurPass1_PostProcessLayer->ProgramState();
   if ( m_blurFast )
   {
-    cocos2d::GLProgramState &blurFaststate = m_blurFast_PostProcessLayer->ProgramState();
-    blurFaststate.setUniformVec2( "u_texelOffset", Vec2( 1.0f/visibleSize.width, 1.0f/visibleSize.height ) ); 
-    blurFaststate.setUniformFloat( "u_blurStrength", (float)blurStrength );
-      
-    m_blurFast_PostProcessLayer->draw(m_gameLayer);
+    blurPass1state.setUniformVec2( "u_blurOffset", Vec2( blurStrength/visibleSize.width, blurStrength/visibleSize.height ) );
   }
   else
   {
-    // blur in X direction
-  
-    cocos2d::GLProgramState &blurXstate = m_blurX_PostProcessLayer->ProgramState();
-    blurXstate.setUniformVec2( "u_blurOffset", Vec2( 1.0f/visibleSize.width, 0.0 ) ); 
-    blurXstate.setUniformFloat( "u_blurStrength", (float)blurStrength );
-  
-	  m_blurX_PostProcessLayer->draw(m_gameLayer);
-
-    // blur in Y direction
-
-    cocos2d::GLProgramState &blurYstate = m_blurY_PostProcessLayer->ProgramState();
-    blurYstate.setUniformVec2( "u_blurOffset", Vec2( 0.0, 1.0f/visibleSize.height ) );
-    blurYstate.setUniformFloat( "u_blurStrength", (float)blurStrength );
-
-	  m_blurY_PostProcessLayer->draw(m_blurX_PostProcessLayer);
+    blurPass1state.setUniformVec2( "u_blurOffset", Vec2( 1.0f/visibleSize.width, 0.0 ) ); 
+    blurPass1state.setUniformFloat( "u_blurStrength", (float)blurStrength );
   }
+  m_gameLayer->setVisible( true );
+  m_blurPass1_PostProcessLayer->draw(m_gameLayer);
+  m_gameLayer->setVisible( false );
+
+  // blur pass 2
+  cocos2d::GLProgramState &blurPass2state = m_blurPass2_PostProcessLayer->ProgramState();
+  if ( m_blurFast )
+  {
+     blurPass2state.setUniformVec2( "u_blurOffset", Vec2( blurStrength/visibleSize.width, -blurStrength/visibleSize.height ) );
+  }
+  else
+  {
+    blurPass2state.setUniformVec2( "u_blurOffset", Vec2( 0.0, 1.0f/visibleSize.height ) );
+    blurPass2state.setUniformFloat( "u_blurStrength", (float)blurStrength );
+  }
+  m_blurPass1_PostProcessLayer->setVisible( true );
+  m_blurPass2_PostProcessLayer->draw(m_blurPass1_PostProcessLayer);
+  m_blurPass1_PostProcessLayer->setVisible( false );
 }

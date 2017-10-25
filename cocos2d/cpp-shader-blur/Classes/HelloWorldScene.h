@@ -10,10 +10,9 @@ class HelloWorld : public cocos2d::Layer
 {
 private:
 	Layer* m_gameLayer;
-	PostProcess* m_blurX_PostProcessLayer;
-  PostProcess* m_blurY_PostProcessLayer;
-	PostProcess* m_blurFast_PostProcessLayer;
-  bool         m_blurFast;
+	PostProcess* m_blurPass1_PostProcessLayer;
+  PostProcess* m_blurPass2_PostProcessLayer;
+	bool         m_blurFast;
 
 public:
     static cocos2d::Scene* createScene();
