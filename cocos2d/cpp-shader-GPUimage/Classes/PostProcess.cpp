@@ -11,7 +11,7 @@ bool PostProcess::init(bool fileNames, const std::string& vertexShader, const st
     if ( fileNames )
 	      _program = GLProgram::createWithFilenames(vertexShader, fragmentShader);
     else
-        _program = GLProgram::createWithByteArrays(vertexShader.data(), fragmentShader.data());
+        _program = GLProgram::createWithByteArrays(vertexShader.c_str(), fragmentShader.c_str());
 	  _program->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_COLOR, GLProgram::VERTEX_ATTRIB_POSITION);
 	  _program->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_POSITION, GLProgram::VERTEX_ATTRIB_COLOR);
 	  _program->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_TEX_COORD, GLProgram::VERTEX_ATTRIB_TEX_COORD);
