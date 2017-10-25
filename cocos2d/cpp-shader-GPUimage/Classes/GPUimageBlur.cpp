@@ -178,7 +178,7 @@ std::string GPUimageBlur::GenerateVertexShaderString( int radius, float sigma )
         if (offsetFromCenter == 0)
             strStr << "  blurCoordinates[" << i << "] = a_texCoord.xy;\n";
         else
-            strStr << "  blurCoordinates[" << i << "] = a_texCoord.xy  + u_texelOffset * " << (float)offsetFromCenter << ";\n";
+            strStr << "  blurCoordinates[" << i << "] = a_texCoord.xy  + u_texelOffset * float(" << offsetFromCenter << ");\n";
     }
     strStr << "}\n";
     return strStr.str();
@@ -285,8 +285,8 @@ std::string GPUimageBlur::GenerateOptimizedVertexShaderString( int radius, float
     strStr << "  blurCoordinates[0] = a_texCoord.xy;\n";
     for (int i = 0; i < numberOfOptimizedOffsets; ++i)
     {
-      strStr << "blurCoordinates[" << i * 2 + 1 << "] = a_texCoord.xy + u_texelOffset * " << (float)optimizedGaussianOffsets[i] << ";\n";
-      strStr << "blurCoordinates[" << i * 2 + 2 << "] = a_texCoord.xy - u_texelOffset * " << (float)optimizedGaussianOffsets[i] << ";\n";
+      strStr << "blurCoordinates[" << i * 2 + 1 << "] = a_texCoord.xy + u_texelOffset * float(" << optimizedGaussianOffsets[i] << ");\n";
+      strStr << "blurCoordinates[" << i * 2 + 2 << "] = a_texCoord.xy - u_texelOffset * float(" << optimizedGaussianOffsets[i] << ");\n";
     }
     strStr << "}\n";
     return strStr.str();
