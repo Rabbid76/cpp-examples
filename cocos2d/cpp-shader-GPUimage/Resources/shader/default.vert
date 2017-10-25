@@ -4,6 +4,6 @@ varying vec2 texCoord;
 void main()
 {
   gl_Position = CC_MVPMatrix * a_position;
-  texCoord = a_texCoord;
+  texCoord = a_texCoord.xy;
 }
 
