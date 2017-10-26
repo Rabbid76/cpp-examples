@@ -2,7 +2,7 @@
 
 using namespace cocos2d;
 
-bool PostProcessShader::init(bool fileNames, const std::string& vertexShader, const std::string& fragmentShader)
+bool PostProcessShader::init( bool fileNames, const std::string& vertexShader, const std::string& fragmentShader )
 {
 	  if ( fileNames )
 	      _program = GLProgram::createWithFilenames(vertexShader, fragmentShader);

@@ -29,7 +29,9 @@ bool GPUimageBlur::init()
   m_optimized = false;
   m_maxRadius = 10;
   m_sigma     = 5.0f;
-
+  
+  Size layerSize = visibleSize;
+  
   //const char * vertShader = "shader/default.vert";
   //const char * fragShader = "shader/default.frag";
 
@@ -53,13 +55,13 @@ bool GPUimageBlur::init()
     m_blurShader2.back().init( false, vertShader, fragShader );
   }
 
-  m_blurPass1 = PostProcess::create( m_blurShader1.back() );
+  m_blurPass1 = PostProcess::create( layerSize, m_blurShader1.back() );
   m_blurPass1->setVisible( false );
   m_blurPass1->setAnchorPoint(Point::ZERO);
 	m_blurPass1->setPosition(Point::ZERO);
 	this->addChild(m_blurPass1, 1);
 
-  m_blurPass2 = PostProcess::create( m_blurShader2.back() );
+  m_blurPass2 = PostProcess::create( layerSize, m_blurShader2.back() );
   m_blurPass2->setVisible( false );
   m_blurPass2->setAnchorPoint(Point::ZERO);
 	m_blurPass2->setPosition(Point::ZERO);
@@ -128,7 +130,8 @@ void GPUimageBlur::update(float delta)
   if ( blurShaderInx > 0 )
   {
     cocos2d::GLProgramState &pass1state = m_blurPass1->ProgramState();
-    pass1state.setUniformVec2( "u_texelOffset", Vec2( 1.0f/visibleSize.width, 0.0 ) ); 
+    auto size = m_blurPass1->Size();
+    pass1state.setUniformVec2( "u_texelOffset", Vec2( 1.0f/size.width, 0.0 ) ); 
   }
   m_gameLayer->setVisible( true );
   m_blurPass1->draw( m_gameLayer );
@@ -138,7 +141,8 @@ void GPUimageBlur::update(float delta)
   if ( blurShaderInx > 0 )
   {
     cocos2d::GLProgramState &pass2state = m_blurPass2->ProgramState();
-    pass2state.setUniformVec2( "u_texelOffset", Vec2( 0.0, 1.0f/visibleSize.height ) );
+    auto size = m_blurPass2->Size();
+    pass2state.setUniformVec2( "u_texelOffset", Vec2( 0.0, 1.0f/size.height ) );
   }
   m_blurPass1->setVisible( true );
   m_blurPass2->draw( m_blurPass1 );

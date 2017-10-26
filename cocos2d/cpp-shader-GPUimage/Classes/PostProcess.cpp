@@ -2,37 +2,36 @@
 
 using namespace cocos2d;
 
-bool PostProcess::init(bool fileNames, const std::string& vertexShader, const std::string& fragmentShader)
+bool PostProcess::init( const cocos2d::Size &size, bool fileNames, const std::string& vertexShader, const std::string& fragmentShader )
 {
 	  if (!Layer::init())
 	  	return false;
     if ( !_shader.init( fileNames, vertexShader, fragmentShader ) )
       return false;
-    if ( !initbuffer() )
+    if ( !initbuffer( size ) )
       return false;
 	  return true;
 }
 
-bool PostProcess::init(const PostProcessShader & shader)
+bool PostProcess::init( const cocos2d::Size &size, const PostProcessShader & shader )
 {
 	  if (!Layer::init())
 	  	return false;
     _shader = shader;
-    if ( !initbuffer() )
+    if ( !initbuffer( size ) )
       return false;
 	  return true;
 }
 
-bool PostProcess::initbuffer(void)
+bool PostProcess::initbuffer( const cocos2d::Size &size )
 {
-    auto visibleSize = Director::getInstance()->getVisibleSize();
+    _size = size;
     
-	  _renderTexture = RenderTexture::create(visibleSize.width, visibleSize.height);
+	  _renderTexture = RenderTexture::create(size.width, size.height);
 	  _renderTexture->retain();
     
 	  _sprite = Sprite::createWithTexture(_renderTexture->getSprite()->getTexture());
-	  _sprite->setTextureRect(Rect(0, 0, _sprite->getTexture()->getContentSize().width,
-	  _sprite->getTexture()->getContentSize().height));
+	  _sprite->setTextureRect(Rect(0, 0, _sprite->getTexture()->getContentSize().width, _sprite->getTexture()->getContentSize().height));
 	  _sprite->setAnchorPoint(Point::ZERO);
 	  _sprite->setPosition(Point::ZERO);
 	  _sprite->setFlippedY(true);
@@ -57,11 +56,11 @@ void PostProcess::draw(cocos2d::Layer* layer)
     _renderTexture->end();
 }
 
-PostProcess* PostProcess::create(bool fileNames, const std::string& vertexShader, const std::string& fragmentShader)
+PostProcess* PostProcess::create( const cocos2d::Size &size, bool fileNames, const std::string& vertexShader, const std::string& fragmentShader )
 {
 	  if ( auto p = new (std::nothrow) PostProcess() )
     {
-      if ( p->init(fileNames, vertexShader, fragmentShader) )
+      if ( p->init( size, fileNames, vertexShader, fragmentShader ) )
       {
         p->autorelease();
 	  	  return p;
@@ -71,11 +70,11 @@ PostProcess* PostProcess::create(bool fileNames, const std::string& vertexShader
     return nullptr;
 }
 
-PostProcess* PostProcess::create(const PostProcessShader & shader)
+PostProcess* PostProcess::create( const cocos2d::Size &size, const PostProcessShader & shader )
 {
 	  if ( auto p = new (std::nothrow) PostProcess() )
     {
-      if ( p->init(shader) )
+      if ( p->init( size, shader ) )
       {
         p->autorelease();
 	  	  return p;
