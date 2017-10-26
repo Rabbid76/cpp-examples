@@ -4,6 +4,20 @@
 
 #include <math.h>
 
+// GPUImage
+// https://github.com/BradLarson/GPUImage/blob/master/framework/Source/GPUImageGaussianBlurFilter.m#L41
+// https://github.com/BradLarson/GPUImage2/blob/master/framework/Source/Operations/GaussianBlur.swift#L75
+// https://github.com/wangyijin/GPUImage-x/blob/master/GPUImage-x/proj.iOS/GPUImage-x/GPUImage-x/filter/GaussianBlurMonoFilter.cpp
+
+
+// demo
+// https://media.giphy.com/media/l1J9Nnp0jDFQwGonu/source.mov
+// https://media.giphy.com/media/3ov9jUMsVIpukMwvFm/giphy.gif 
+
+
+// resource
+// https://github.com/KAMIKAZEUA/RenderTextureBlur
+
 USING_NS_CC;
 
 Scene* GPUimageBlur::createScene()
@@ -30,8 +44,8 @@ bool GPUimageBlur::init()
   m_maxRadius  = 10;
   m_sigma      = 10.0f;
   m_stride     = 1;
-  m_linear     = true;
-  m_downScaled = true;
+  m_linear     = false;
+  m_downScaled = false;
   
   Size layerSize = visibleSize;
   Size layerSize1 = layerSize;
