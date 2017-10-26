@@ -26,13 +26,23 @@ bool GPUimageBlur::init()
 	m_gameLayer = Layer::create();
 	this->addChild(m_gameLayer, 0);
 
-  m_optimized = false;
-  m_maxRadius = 8;
-  m_sigma     = 5.0f;
-  m_stride    = 2;
-  m_linear    = true;
+  m_optimized  = false;
+  m_maxRadius  = 8;
+  m_sigma      = 5.0f;
+  m_stride     = 1;
+  m_linear     = false;
+  m_downScaled = true;
   
   Size layerSize = visibleSize;
+  Size layerSize1 = layerSize;
+  Size layerSize2 = layerSize;
+  if ( m_downScaled )
+  {
+    layerSize1.width *= 0.5f;
+    layerSize1.height *= 0.5f;
+    layerSize2.width *= 0.5f;
+    layerSize2.height *= 0.5f;
+  }
   
   //const char * vertShader = "shader/default.vert";
   //const char * fragShader = "shader/default.frag";
@@ -57,17 +67,17 @@ bool GPUimageBlur::init()
     m_blurShader2.back().init( false, vertShader, fragShader );
   }
 
-  m_blurPass1 = PostProcess::create( m_linear, layerSize, m_blurShader1.back() );
+  m_blurPass1 = PostProcess::create( m_linear, layerSize1, m_blurShader1.back() );
   m_blurPass1->setVisible( false );
   m_blurPass1->setAnchorPoint(Point::ZERO);
 	m_blurPass1->setPosition(Point::ZERO);
-	this->addChild(m_blurPass1, 1);
+  this->addChild(m_blurPass1, 1);
 
-  m_blurPass2 = PostProcess::create( m_linear, layerSize, m_blurShader2.back() );
+  m_blurPass2 = PostProcess::create( m_linear, layerSize2, m_blurShader2.back() );
   m_blurPass2->setVisible( false );
   m_blurPass2->setAnchorPoint(Point::ZERO);
 	m_blurPass2->setPosition(Point::ZERO);
-	this->addChild(m_blurPass2, 2);
+  this->addChild(m_blurPass2, 2);
 
 	auto closeItem = MenuItemImage::create("CloseNormal.png", "CloseSelected.png", CC_CALLBACK_1(GPUimageBlur::menuCloseCallback, this));
 	closeItem->setPosition(Vec2(origin.x + visibleSize.width - closeItem->getContentSize().width/2, origin.y + closeItem->getContentSize().height/2));
@@ -129,30 +139,45 @@ void GPUimageBlur::update(float delta)
   m_blurPass2->changeShader( m_blurShader2[blurShaderInx] );
 
   // blur pass 1
+  auto size1 = m_blurPass1->Size();
   if ( blurShaderInx > 0 )
   {
     cocos2d::GLProgramState &pass1state = m_blurPass1->ProgramState();
-    auto size = m_blurPass1->Size();
-    float offsetX = ( ( m_linear ? 0.5f : 0.0f ) + float( m_stride ) ) / size.width;
-    float offsetY = ( m_linear ? 0.5f : 0.0f ) / size.height;
+    float offsetX = ( ( m_linear ? 0.5f : 0.0f ) + float( m_stride ) ) / size1.width;
+    float offsetY = 0.0f;
     pass1state.setUniformVec2( "u_texelOffset", Vec2( offsetX, offsetY ) ); 
   }
   m_gameLayer->setVisible( true );
+  if ( m_downScaled )
+  {
+    m_gameLayer->setScale( 0.5f );
+    m_gameLayer->setPosition( -size1.width * 0.5f, -size1.height * 0.5f );
+  }
   m_blurPass1->draw( m_gameLayer );
+  if ( m_downScaled )
+  {
+    m_gameLayer->setScale( 1.0f );
+    m_gameLayer->setPosition( 0.0f, 0.0f );
+  }
   m_gameLayer->setVisible( false );
 
   // blur pass 2
+  auto size2 = m_blurPass1->Size();
   if ( blurShaderInx > 0 )
   {
     cocos2d::GLProgramState &pass2state = m_blurPass2->ProgramState();
     auto size = m_blurPass2->Size();
-    float offsetX = ( m_linear ? 0.5f : 0.0f ) / size.width;
-    float offsetY = ( ( m_linear ? 0.5f : 0.0f ) + float( m_stride ) ) / size.height;
+    float offsetX = 0.0f;
+    float offsetY = ( ( m_linear ? 0.5f : 0.0f ) + float( m_stride ) ) / size2.height;
     pass2state.setUniformVec2( "u_texelOffset", Vec2( offsetX, offsetY ) );
   }
   m_blurPass1->setVisible( true );
+  if ( m_downScaled )
+    m_blurPass2->setScale( 1.0f );
   m_blurPass2->draw( m_blurPass1 );
   m_blurPass1->setVisible( false );
+  if ( m_downScaled )
+    m_blurPass2->setScale( sqrt(1.0f/0.5f) );
 }
 
 

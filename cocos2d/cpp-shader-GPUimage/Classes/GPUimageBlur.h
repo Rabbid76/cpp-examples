@@ -41,6 +41,7 @@ private:
   float m_sigma;
   int   m_stride;
   bool  m_linear;
+  bool  m_downScaled;
 
   std::chrono::high_resolution_clock::time_point _startTime;
 };
