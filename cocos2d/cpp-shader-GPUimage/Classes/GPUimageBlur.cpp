@@ -1,5 +1,6 @@
 #include "GPUimageBlur.h"
-#include "PostProcess.hpp"
+#include "PostProcess.h"
+#include "PostProcessShader.h"
 
 #include <math.h>
 
@@ -7,16 +8,9 @@ USING_NS_CC;
 
 Scene* GPUimageBlur::createScene()
 {
-    // 'scene' is an autorelease object
     auto scene = Scene::create();
-    
-    // 'layer' is an autorelease object
     auto layer = GPUimageBlur::create();
-
-    // add layer as a child to scene
     scene->addChild(layer);
-
-    // return the scene
     return scene;
 }
 
@@ -52,19 +46,24 @@ bool GPUimageBlur::init()
       vertShader = GenerateVertexShaderString( i, m_sigma );
       fragShader = GenerateFragmentShaderString( i, m_sigma );
     }
-    
-    m_blurPass1.push_back( PostProcess::create( false, vertShader, fragShader ) );
-    m_blurPass1.back()->setVisible( false );
-    m_blurPass1.back()->setAnchorPoint(Point::ZERO);
-	  m_blurPass1.back()->setPosition(Point::ZERO);
-	  this->addChild(m_blurPass1.back(), 1);
 
-    m_blurPass2.push_back( PostProcess::create( false, vertShader, fragShader ) );
-    m_blurPass2.back()->setVisible( false );
-    m_blurPass2.back()->setAnchorPoint(Point::ZERO);
-	  m_blurPass2.back()->setPosition(Point::ZERO);
-	  this->addChild(m_blurPass2.back(), 2);
+    m_blurShader1.push_back( PostProcessShader() );
+    m_blurShader1.back().init( false, vertShader, fragShader );
+    m_blurShader2.push_back( PostProcessShader() );
+    m_blurShader2.back().init( false, vertShader, fragShader );
   }
+
+  m_blurPass1 = PostProcess::create( m_blurShader1.back() );
+  m_blurPass1->setVisible( false );
+  m_blurPass1->setAnchorPoint(Point::ZERO);
+	m_blurPass1->setPosition(Point::ZERO);
+	this->addChild(m_blurPass1, 1);
+
+  m_blurPass2 = PostProcess::create( m_blurShader2.back() );
+  m_blurPass2->setVisible( false );
+  m_blurPass2->setAnchorPoint(Point::ZERO);
+	m_blurPass2->setPosition(Point::ZERO);
+	this->addChild(m_blurPass2, 2);
 
 	auto closeItem = MenuItemImage::create("CloseNormal.png", "CloseSelected.png", CC_CALLBACK_1(GPUimageBlur::menuCloseCallback, this));
 	closeItem->setPosition(Vec2(origin.x + visibleSize.width - closeItem->getContentSize().width/2, origin.y + closeItem->getContentSize().height/2));
@@ -108,8 +107,8 @@ void GPUimageBlur::update(float delta)
   static bool blur = true;
   
   m_gameLayer->setVisible( !blur );
-  for ( auto pass : m_blurPass2 )
-    pass->setVisible( false );
+  m_blurPass1->setVisible( false );
+  m_blurPass2->setVisible( blur );
 
   if ( blur == false )
     return;
@@ -122,29 +121,28 @@ void GPUimageBlur::update(float delta)
   blurStrength = (blurStrength) > 1.0 ? (2.0 - blurStrength) : blurStrength;
 
   int blurShaderInx = (int)( blurStrength * m_maxRadius + 0.5 );
-  PostProcess *pass1 = m_blurPass1[blurShaderInx];
-  PostProcess *pass2 = m_blurPass2[blurShaderInx];
+  m_blurPass1->changeShader( m_blurShader1[blurShaderInx] );
+  m_blurPass2->changeShader( m_blurShader2[blurShaderInx] );
   
   // blur pass 1
   if ( blurShaderInx > 0 )
   {
-    cocos2d::GLProgramState &pass1state = pass1->ProgramState();
+    cocos2d::GLProgramState &pass1state = m_blurPass1->ProgramState();
     pass1state.setUniformVec2( "u_texelOffset", Vec2( 1.0f/visibleSize.width, 0.0 ) ); 
   }
   m_gameLayer->setVisible( true );
-  pass1->draw(m_gameLayer);
+  m_blurPass1->draw( m_gameLayer );
   m_gameLayer->setVisible( false );
 
   // blur pass 2
   if ( blurShaderInx > 0 )
   {
-    cocos2d::GLProgramState &pass2state = pass2->ProgramState();
+    cocos2d::GLProgramState &pass2state = m_blurPass2->ProgramState();
     pass2state.setUniformVec2( "u_texelOffset", Vec2( 0.0, 1.0f/visibleSize.height ) );
   }
-  pass2->setVisible( true );
-  pass1->setVisible( true );
-  pass2->draw(pass1);
-  pass1->setVisible( false );
+  m_blurPass1->setVisible( true );
+  m_blurPass2->draw( m_blurPass1 );
+  m_blurPass1->setVisible( false );
 }
 
 

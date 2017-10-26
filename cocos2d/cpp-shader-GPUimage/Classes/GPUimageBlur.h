@@ -4,6 +4,8 @@
 #include "cocos2d.h"
 #include <chrono>
 
+#include <PostProcessShader.h>
+
 class PostProcess;
 
 class GPUimageBlur : public cocos2d::Layer
@@ -28,9 +30,11 @@ public:
 
 private: 
 
-  cocos2d::Layer            *m_gameLayer;
-  std::vector<PostProcess*>  m_blurPass1;
-  std::vector<PostProcess*>  m_blurPass2;
+  cocos2d::Layer                 *m_gameLayer;
+  std::vector<PostProcessShader>  m_blurShader1;
+  std::vector<PostProcessShader>  m_blurShader2;
+  PostProcess*                    m_blurPass1;
+  PostProcess*                    m_blurPass2;
 
 	bool  m_optimized;
   int   m_maxRadius;

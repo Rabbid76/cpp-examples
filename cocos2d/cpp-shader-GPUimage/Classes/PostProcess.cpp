@@ -1,39 +1,31 @@
-#include "PostProcess.hpp"
+#include "PostProcess.h"
 
 using namespace cocos2d;
 
 bool PostProcess::init(bool fileNames, const std::string& vertexShader, const std::string& fragmentShader)
 {
-	  if (!Layer::init()) {
+	  if (!Layer::init())
 	  	return false;
-	  }
-    
-    if ( fileNames )
-	      _program = GLProgram::createWithFilenames(vertexShader, fragmentShader);
-    else
-    {
-        std::vector<GLchar> vSh(vertexShader.length()+1);
-        std::strcpy(vSh.data(), vertexShader.c_str());
-         std::vector<GLchar> fSh(fragmentShader.length()+1);
-        std::strcpy(fSh.data(), fragmentShader.c_str());
-        _program = GLProgram::createWithByteArrays(vSh.data(), fSh.data());
-    }
-	  _program->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_COLOR, GLProgram::VERTEX_ATTRIB_POSITION);
-	  _program->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_POSITION, GLProgram::VERTEX_ATTRIB_COLOR);
-	  _program->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_TEX_COORD, GLProgram::VERTEX_ATTRIB_TEX_COORD);
-	  _program->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_TEX_COORD1, GLProgram::VERTEX_ATTRIB_TEX_COORD1);
-	  _program->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_TEX_COORD2, GLProgram::VERTEX_ATTRIB_TEX_COORD2);
-	  _program->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_TEX_COORD3, GLProgram::VERTEX_ATTRIB_TEX_COORD3);
-	  _program->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_NORMAL, GLProgram::VERTEX_ATTRIB_NORMAL);
-	  _program->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_BLEND_WEIGHT, GLProgram::VERTEX_ATTRIB_BLEND_WEIGHT);
-	  _program->bindAttribLocation(GLProgram::ATTRIBUTE_NAME_BLEND_INDEX, GLProgram::VERTEX_ATTRIB_BLEND_INDEX);
-	  _program->link();
-    
-    _progState = GLProgramState::getOrCreateWithGLProgram(_program);
-    
-	  _program->updateUniforms();
-    
-	  auto visibleSize = Director::getInstance()->getVisibleSize();
+    if ( !_shader.init( fileNames, vertexShader, fragmentShader ) )
+      return false;
+    if ( !initbuffer() )
+      return false;
+	  return true;
+}
+
+bool PostProcess::init(const PostProcessShader & shader)
+{
+	  if (!Layer::init())
+	  	return false;
+    _shader = shader;
+    if ( !initbuffer() )
+      return false;
+	  return true;
+}
+
+bool PostProcess::initbuffer(void)
+{
+    auto visibleSize = Director::getInstance()->getVisibleSize();
     
 	  _renderTexture = RenderTexture::create(visibleSize.width, visibleSize.height);
 	  _renderTexture->retain();
@@ -44,11 +36,18 @@ bool PostProcess::init(bool fileNames, const std::string& vertexShader, const st
 	  _sprite->setAnchorPoint(Point::ZERO);
 	  _sprite->setPosition(Point::ZERO);
 	  _sprite->setFlippedY(true);
-	  _sprite->setGLProgram(_program);
-    _sprite->setGLProgramState(_progState);
+	  _sprite->setGLProgram(&Program());
+    _sprite->setGLProgramState(&ProgramState());
 	  this->addChild(_sprite);
-    
-	  return true;
+
+    return true;
+}
+
+void PostProcess::changeShader( const PostProcessShader & shader )
+{ 
+  _shader = shader;
+  _sprite->setGLProgram(&Program());
+  _sprite->setGLProgramState(&ProgramState());
 }
 
 void PostProcess::draw(cocos2d::Layer* layer)
@@ -60,11 +59,28 @@ void PostProcess::draw(cocos2d::Layer* layer)
 
 PostProcess* PostProcess::create(bool fileNames, const std::string& vertexShader, const std::string& fragmentShader)
 {
-	  auto p = new (std::nothrow) PostProcess();
-	  if (p && p->init(fileNames, vertexShader, fragmentShader)) {
-	  	p->autorelease();
-	  	return p;
-	  }
-	  delete p;
-	  return nullptr;
+	  if ( auto p = new (std::nothrow) PostProcess() )
+    {
+      if ( p->init(fileNames, vertexShader, fragmentShader) )
+      {
+        p->autorelease();
+	  	  return p;
+      }
+      delete p;
+    }
+    return nullptr;
+}
+
+PostProcess* PostProcess::create(const PostProcessShader & shader)
+{
+	  if ( auto p = new (std::nothrow) PostProcess() )
+    {
+      if ( p->init(shader) )
+      {
+        p->autorelease();
+	  	  return p;
+      }
+      delete p;
+    }
+    return nullptr;
 }
