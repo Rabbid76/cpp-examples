@@ -23,7 +23,7 @@ public:
 
     virtual void update(float delta) override;
 
-    std::string GenerateVertexShaderString( bool linear, bool downscaled, int radius, float sigma );
+    std::string GenerateVertexShaderString( bool linearShift, int radius, float sigma );
     std::string GenerateFragmentShaderString( int radius, float sigma );
     std::string GenerateOptimizedVertexShaderString( int radius, float sigma );
     std::string GenerateOptimizedFragmentShaderString( int radius, float sigma );

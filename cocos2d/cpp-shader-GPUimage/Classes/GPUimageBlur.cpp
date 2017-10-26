@@ -27,8 +27,8 @@ bool GPUimageBlur::init()
 	this->addChild(m_gameLayer, 0);
 
   m_optimized  = false;
-  m_maxRadius  = 8;
-  m_sigma      = 5.0f;
+  m_maxRadius  = 10;
+  m_sigma      = 10.0f;
   m_stride     = 1;
   m_linear     = true;
   m_downScaled = true;
@@ -49,22 +49,23 @@ bool GPUimageBlur::init()
 
   for ( int i = 0; i <= m_maxRadius; ++ i )
   {
-    std::string vertShader, fragShader;
+    std::string vertShader1, vertShader2, fragShader;
     if ( m_optimized )
     {
-      vertShader = GenerateOptimizedVertexShaderString( i, m_sigma );
+      vertShader1 = vertShader2 = GenerateOptimizedVertexShaderString( i, m_sigma );
       fragShader = GenerateOptimizedFragmentShaderString( i, m_sigma );
     }
     else
     {
-      vertShader = GenerateVertexShaderString( m_linear, m_downScaled, i, m_sigma );
+      vertShader1 = GenerateVertexShaderString( m_linear && !m_downScaled, i, m_sigma );
+      vertShader2 = GenerateVertexShaderString( m_linear, i, m_sigma );
       fragShader = GenerateFragmentShaderString( i, m_sigma );
     }
 
     m_blurShader1.push_back( PostProcessShader() );
-    m_blurShader1.back().init( false, vertShader, fragShader );
+    m_blurShader1.back().init( false, vertShader1, fragShader );
     m_blurShader2.push_back( PostProcessShader() );
-    m_blurShader2.back().init( false, vertShader, fragShader );
+    m_blurShader2.back().init( false, vertShader2, fragShader );
   }
 
   m_blurPass1 = PostProcess::create( m_linear, layerSize1, m_blurShader1.back() );
@@ -177,7 +178,7 @@ void GPUimageBlur::update(float delta)
 }
 
 
-std::string GPUimageBlur::GenerateVertexShaderString( bool linear, bool downscaled, int radius, float sigma )
+std::string GPUimageBlur::GenerateVertexShaderString( bool linearShift, int radius, float sigma )
 {
     if (radius < 1 || sigma <= 0.0)
     {
@@ -204,14 +205,13 @@ std::string GPUimageBlur::GenerateVertexShaderString( bool linear, bool downscal
     for (int i = 0; i < radius * 2 + 1; ++i)
     {
         int offsetFromCenter = i - radius;
-        float linearShift = downscaled ? 0.25f : 0.5f;
-        float offsetLinear = ( offsetFromCenter < 0 ) ? ( (float)offsetFromCenter + linearShift ) : ( (float)offsetFromCenter - linearShift );
+        float offsetLinear = ( offsetFromCenter < 0 ) ? ( (float)offsetFromCenter + 0.5f ) : ( (float)offsetFromCenter - 0.5f );
         if (offsetFromCenter == 0)
             strStr << "  blurCoordinates[" << i << "] = a_texCoord.xy;\n";
-        else if ( linear)
-             strStr << "  blurCoordinates[" << i << "] = a_texCoord.xy  + u_texelOffset * " << offsetLinear << ";\n";
+        else if ( linearShift )
+           strStr << "  blurCoordinates[" << i << "] = a_texCoord.xy + u_texelOffset * " << offsetLinear << ";\n";
         else
-            strStr << "  blurCoordinates[" << i << "] = a_texCoord.xy  + u_texelOffset * float(" << offsetFromCenter << ");\n";
+            strStr << "  blurCoordinates[" << i << "] = a_texCoord.xy + u_texelOffset * float(" << offsetFromCenter << ");\n";
     }
     strStr << "}\n";
     return strStr.str();
