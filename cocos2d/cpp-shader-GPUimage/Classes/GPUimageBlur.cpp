@@ -30,7 +30,7 @@ bool GPUimageBlur::init()
   m_maxRadius  = 8;
   m_sigma      = 5.0f;
   m_stride     = 1;
-  m_linear     = false;
+  m_linear     = true;
   m_downScaled = true;
   
   Size layerSize = visibleSize;
@@ -57,7 +57,7 @@ bool GPUimageBlur::init()
     }
     else
     {
-      vertShader = GenerateVertexShaderString( i, m_sigma );
+      vertShader = GenerateVertexShaderString( m_linear, m_downScaled, i, m_sigma );
       fragShader = GenerateFragmentShaderString( i, m_sigma );
     }
 
@@ -143,9 +143,7 @@ void GPUimageBlur::update(float delta)
   if ( blurShaderInx > 0 )
   {
     cocos2d::GLProgramState &pass1state = m_blurPass1->ProgramState();
-    float offsetX = ( ( m_linear ? 0.5f : 0.0f ) + float( m_stride ) ) / size1.width;
-    float offsetY = 0.0f;
-    pass1state.setUniformVec2( "u_texelOffset", Vec2( offsetX, offsetY ) ); 
+    pass1state.setUniformVec2( "u_texelOffset", Vec2( float( m_stride ) / size1.width, 0.0f ) ); 
   }
   m_gameLayer->setVisible( true );
   if ( m_downScaled )
@@ -167,9 +165,7 @@ void GPUimageBlur::update(float delta)
   {
     cocos2d::GLProgramState &pass2state = m_blurPass2->ProgramState();
     auto size = m_blurPass2->Size();
-    float offsetX = 0.0f;
-    float offsetY = ( ( m_linear ? 0.5f : 0.0f ) + float( m_stride ) ) / size2.height;
-    pass2state.setUniformVec2( "u_texelOffset", Vec2( offsetX, offsetY ) );
+    pass2state.setUniformVec2( "u_texelOffset", Vec2( 0.0f, float( m_stride ) / size1.height ) );
   }
   m_blurPass1->setVisible( true );
   if ( m_downScaled )
@@ -181,7 +177,7 @@ void GPUimageBlur::update(float delta)
 }
 
 
-std::string GPUimageBlur::GenerateVertexShaderString( int radius, float sigma )
+std::string GPUimageBlur::GenerateVertexShaderString( bool linear, bool downscaled, int radius, float sigma )
 {
     if (radius < 1 || sigma <= 0.0)
     {
@@ -208,8 +204,12 @@ std::string GPUimageBlur::GenerateVertexShaderString( int radius, float sigma )
     for (int i = 0; i < radius * 2 + 1; ++i)
     {
         int offsetFromCenter = i - radius;
+        float linearShift = downscaled ? 0.25f : 0.5f;
+        float offsetLinear = ( offsetFromCenter < 0 ) ? ( (float)offsetFromCenter + linearShift ) : ( (float)offsetFromCenter - linearShift );
         if (offsetFromCenter == 0)
             strStr << "  blurCoordinates[" << i << "] = a_texCoord.xy;\n";
+        else if ( linear)
+             strStr << "  blurCoordinates[" << i << "] = a_texCoord.xy  + u_texelOffset * " << offsetLinear << ";\n";
         else
             strStr << "  blurCoordinates[" << i << "] = a_texCoord.xy  + u_texelOffset * float(" << offsetFromCenter << ");\n";
     }
@@ -306,6 +306,8 @@ std::string GPUimageBlur::GenerateOptimizedVertexShaderString( int radius, float
         
         optimizedGaussianOffsets[i] = (firstWeight * (i * 2 + 1) + secondWeight * (i * 2 + 2)) / optimizedWeight;
     }
+    //if ( linear )
+    //  optimizedGaussianOffsets.back() -= 0.5f;
 
     std::stringstream strStr;
     strStr << "attribute vec4 a_position;\n";
