@@ -26,9 +26,9 @@ bool GPUimageBlur::init()
 	m_gameLayer = Layer::create();
 	this->addChild(m_gameLayer, 0);
 
-  m_optimized = true;
-  m_maxRadius = 10;
-  m_sigma     = 10.0f;
+  m_optimized = false;
+  m_maxRadius = 8;
+  m_sigma     = 5.0f;
   m_stride    = 2.5f;
   
   Size layerSize = visibleSize;
@@ -52,18 +52,18 @@ bool GPUimageBlur::init()
     }
 
     m_blurShader1.push_back( PostProcessShader() );
-    m_blurShader1.back().init( linear, vertShader, fragShader );
+    m_blurShader1.back().init( false, vertShader, fragShader );
     m_blurShader2.push_back( PostProcessShader() );
-    m_blurShader2.back().init( linear, vertShader, fragShader );
+    m_blurShader2.back().init( false, vertShader, fragShader );
   }
 
-  m_blurPass1 = PostProcess::create( true, layerSize, m_blurShader1.back() );
+  m_blurPass1 = PostProcess::create( linear, layerSize, m_blurShader1.back() );
   m_blurPass1->setVisible( false );
   m_blurPass1->setAnchorPoint(Point::ZERO);
 	m_blurPass1->setPosition(Point::ZERO);
 	this->addChild(m_blurPass1, 1);
 
-  m_blurPass2 = PostProcess::create( true, layerSize, m_blurShader2.back() );
+  m_blurPass2 = PostProcess::create( linear, layerSize, m_blurShader2.back() );
   m_blurPass2->setVisible( false );
   m_blurPass2->setAnchorPoint(Point::ZERO);
 	m_blurPass2->setPosition(Point::ZERO);
