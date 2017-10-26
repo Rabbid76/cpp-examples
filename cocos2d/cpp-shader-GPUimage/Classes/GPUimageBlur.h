@@ -39,7 +39,8 @@ private:
 	bool  m_optimized;
   int   m_maxRadius;
   float m_sigma;
-  float m_stride;
+  int   m_stride;
+  bool  m_linear;
 
   std::chrono::high_resolution_clock::time_point _startTime;
 };

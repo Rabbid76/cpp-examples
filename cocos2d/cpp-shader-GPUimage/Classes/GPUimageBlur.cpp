@@ -29,14 +29,14 @@ bool GPUimageBlur::init()
   m_optimized = false;
   m_maxRadius = 8;
   m_sigma     = 5.0f;
-  m_stride    = 2.5f;
+  m_stride    = 2;
+  m_linear    = true;
   
   Size layerSize = visibleSize;
   
   //const char * vertShader = "shader/default.vert";
   //const char * fragShader = "shader/default.frag";
 
-  bool linear = false;
   for ( int i = 0; i <= m_maxRadius; ++ i )
   {
     std::string vertShader, fragShader;
@@ -57,13 +57,13 @@ bool GPUimageBlur::init()
     m_blurShader2.back().init( false, vertShader, fragShader );
   }
 
-  m_blurPass1 = PostProcess::create( linear, layerSize, m_blurShader1.back() );
+  m_blurPass1 = PostProcess::create( m_linear, layerSize, m_blurShader1.back() );
   m_blurPass1->setVisible( false );
   m_blurPass1->setAnchorPoint(Point::ZERO);
 	m_blurPass1->setPosition(Point::ZERO);
 	this->addChild(m_blurPass1, 1);
 
-  m_blurPass2 = PostProcess::create( linear, layerSize, m_blurShader2.back() );
+  m_blurPass2 = PostProcess::create( m_linear, layerSize, m_blurShader2.back() );
   m_blurPass2->setVisible( false );
   m_blurPass2->setAnchorPoint(Point::ZERO);
 	m_blurPass2->setPosition(Point::ZERO);
@@ -133,7 +133,9 @@ void GPUimageBlur::update(float delta)
   {
     cocos2d::GLProgramState &pass1state = m_blurPass1->ProgramState();
     auto size = m_blurPass1->Size();
-    pass1state.setUniformVec2( "u_texelOffset", Vec2( m_stride*1.0f/size.width, 0.0 ) ); 
+    float offsetX = ( ( m_linear ? 0.5f : 0.0f ) + float( m_stride ) ) / size.width;
+    float offsetY = ( m_linear ? 0.5f : 0.0f ) / size.height;
+    pass1state.setUniformVec2( "u_texelOffset", Vec2( offsetX, offsetY ) ); 
   }
   m_gameLayer->setVisible( true );
   m_blurPass1->draw( m_gameLayer );
@@ -144,7 +146,9 @@ void GPUimageBlur::update(float delta)
   {
     cocos2d::GLProgramState &pass2state = m_blurPass2->ProgramState();
     auto size = m_blurPass2->Size();
-    pass2state.setUniformVec2( "u_texelOffset", Vec2( 0.0, m_stride*1.0f/size.height ) );
+    float offsetX = ( m_linear ? 0.5f : 0.0f ) / size.width;
+    float offsetY = ( ( m_linear ? 0.5f : 0.0f ) + float( m_stride ) ) / size.height;
+    pass2state.setUniformVec2( "u_texelOffset", Vec2( offsetX, offsetY ) );
   }
   m_blurPass1->setVisible( true );
   m_blurPass2->draw( m_blurPass1 );
