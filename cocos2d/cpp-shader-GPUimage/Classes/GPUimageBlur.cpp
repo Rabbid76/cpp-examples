@@ -205,7 +205,8 @@ void GPUimageBlur::update(float delta)
   m_blurPass1->changeShader( m_blurShader1[blurShaderInx] );
   m_blurPass2->changeShader( m_blurShader2[blurShaderInx] );
 
-  static bool halfOffset = m_optimized;
+  //static bool halfOffset = m_optimized;
+  static bool halfOffset = false;
 
   // blur pass 1
   auto size1 = m_blurPass1->Size();
