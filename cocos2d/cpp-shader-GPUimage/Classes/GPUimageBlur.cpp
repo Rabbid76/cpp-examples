@@ -49,7 +49,7 @@ bool GPUimageBlur::init()
   m_linear     = true;
   m_downScaled = false;
 
-  bool logShader = true;
+  bool logShader = false;
   std::string logPath = "c:/temp/log/";
   
   Size layerSize = visibleSize;
