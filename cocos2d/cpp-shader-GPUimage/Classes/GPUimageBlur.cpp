@@ -205,12 +205,17 @@ void GPUimageBlur::update(float delta)
   m_blurPass1->changeShader( m_blurShader1[blurShaderInx] );
   m_blurPass2->changeShader( m_blurShader2[blurShaderInx] );
 
+  static bool halfOffset = m_optimized;
+
   // blur pass 1
   auto size1 = m_blurPass1->Size();
   if ( blurShaderInx > 0 )
   {
     cocos2d::GLProgramState &pass1state = m_blurPass1->ProgramState();
-    pass1state.setUniformVec2( "u_texelOffset", Vec2( float( m_stride ) / size1.width, 0.0f ) ); 
+    float offsetX = float( m_stride ) / size1.width;
+    if ( halfOffset )
+      offsetX *= 0.5;
+    pass1state.setUniformVec2( "u_texelOffset", Vec2( offsetX, 0.0f ) ); 
   }
   m_gameLayer->setVisible( true );
   if ( m_downScaled )
@@ -232,7 +237,10 @@ void GPUimageBlur::update(float delta)
   {
     cocos2d::GLProgramState &pass2state = m_blurPass2->ProgramState();
     auto size = m_blurPass2->Size();
-    pass2state.setUniformVec2( "u_texelOffset", Vec2( 0.0f, float( m_stride ) / size1.height ) );
+    float offsetY = float( m_stride ) / size1.height;
+    if ( halfOffset )
+      offsetY *= 0.5;
+    pass2state.setUniformVec2( "u_texelOffset", Vec2( 0.0f, offsetY ) );
   }
   m_blurPass1->setVisible( true );
   if ( m_downScaled )
