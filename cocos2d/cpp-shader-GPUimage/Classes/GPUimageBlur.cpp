@@ -4,6 +4,9 @@
 
 #include <math.h>
 
+#include <iostream>
+#include <fstream>
+
 // GPUImage
 // https://github.com/BradLarson/GPUImage/blob/master/framework/Source/GPUImageGaussianBlurFilter.m#L41
 // https://github.com/BradLarson/GPUImage2/blob/master/framework/Source/Operations/GaussianBlur.swift#L75
@@ -40,12 +43,15 @@ bool GPUimageBlur::init()
 	m_gameLayer = Layer::create();
 	this->addChild(m_gameLayer, 0);
 
-  m_optimized  = false;
+  m_optimized  = true;
   m_steps      = 30;
-  m_maxSigma   = 10.0;
+  m_maxSigma   = 16.0;
   m_stride     = 1;
-  m_linear     = false;
+  m_linear     = true;
   m_downScaled = false;
+
+  bool logShader = false;
+  std::string logPath = "c:/temp/log/";
   
   Size layerSize = visibleSize;
   Size layerSize1 = layerSize;
@@ -108,6 +114,19 @@ bool GPUimageBlur::init()
       vertShader1 = GenerateVertexShaderString( m_linear && !m_downScaled, radius, sigma );
       vertShader2 = GenerateVertexShaderString( m_linear, radius, sigma );
       fragShader = GenerateFragmentShaderString( radius, sigma );
+    }
+
+    if ( logShader )
+    {
+      std::string fileName = logPath + "blur_" + std::string(m_optimized ? "opt_" : "std_") +  std::to_string( i );
+      std::ofstream v_file;
+      v_file.open(fileName + ".vert");
+      v_file << vertShader1.c_str() << std::endl;
+      v_file.close();
+      std::ofstream f_file;
+      f_file.open(fileName + ".frag");
+      f_file << fragShader.c_str() << std::endl;
+      f_file.close();
     }
 
     m_blurShader1.push_back( PostProcessShader() );
@@ -246,13 +265,19 @@ std::string GPUimageBlur::GenerateVertexShaderString( bool linearShift, int radi
     }
 
     std::stringstream strStr;
+    strStr.precision(6);
+    strStr << std::fixed;
     strStr << "#ifdef GL_ES\n";
     strStr << "precision mediump float;\n";
     strStr << "#endif\n";
     strStr << "attribute vec4 a_position;\n";
     strStr << "attribute vec4 a_texCoord;\n";
     strStr << "uniform vec2 u_texelOffset;\n";
+    strStr << "#ifdef GL_ES\n";
+    strStr << "varying highp vec2 blurCoordinates[" << radius * 2 + 1 << "];\n";
+    strStr << "#else\n";
     strStr << "varying vec2 blurCoordinates[" << radius * 2 + 1 << "];\n";
+    strStr << "#endif\n";
     strStr << "void main()\n";
     strStr << "{\n";
     strStr << "  gl_Position = CC_MVPMatrix * a_position;\n";
@@ -270,7 +295,7 @@ std::string GPUimageBlur::GenerateVertexShaderString( bool linearShift, int radi
         else if ( linearShift )
            strStr << "  blurCoordinates[" << i << "] = a_texCoord.xy + texelSpacing * " << offsetLinear << ";\n";
         else
-           strStr << "  blurCoordinates[" << i << "] = a_texCoord.xy + texelSpacing * float(" << offsetFromCenter << ");\n";
+           strStr << "  blurCoordinates[" << i << "] = a_texCoord.xy + texelSpacing * " << offsetFromCenter << ";\n";
     }
     strStr << "}\n";
     return strStr.str();
@@ -307,10 +332,13 @@ std::string GPUimageBlur::GenerateFragmentShaderString( int radius, float sigma 
         standardGaussianWeights[i] = standardGaussianWeights[i] / sumOfWeights;
 
     std::stringstream strStr;
+    strStr.precision(6);
+    strStr << std::fixed;
     strStr << "#ifdef GL_ES\n";
-    strStr << "precision mediump float;\n";
-    strStr << "#endif\n";
+    strStr << "varying highp vec2 blurCoordinates[" << radius * 2 + 1 << "];\n";
+    strStr << "#else\n";
     strStr << "varying vec2 blurCoordinates[" << radius * 2 + 1 << "];\n";
+    strStr << "#endif\n";
     strStr << "void main()\n";
     strStr << "{\n";
     strStr << "  gl_FragColor = vec4(0.0);\n";
@@ -376,13 +404,19 @@ std::string GPUimageBlur::GenerateOptimizedVertexShaderString( int radius, float
     }
    
     std::stringstream strStr;
+    strStr.precision(6);
+    strStr << std::fixed;
     strStr << "#ifdef GL_ES\n";
     strStr << "precision mediump float;\n";
     strStr << "#endif\n";
     strStr << "attribute vec4 a_position;\n";
     strStr << "attribute vec4 a_texCoord;\n";
     strStr << "uniform vec2 u_texelOffset;\n";
+    strStr << "#ifdef GL_ES\n";
+    strStr << "varying highp vec2 blurCoordinates[" << numberOfOptimizedOffsets * 2 + 1 << "];\n";
+    strStr << "#else\n";
     strStr << "varying vec2 blurCoordinates[" << numberOfOptimizedOffsets * 2 + 1 << "];\n";
+    strStr << "#endif\n";
     strStr << "void main()\n";
     strStr << "{\n";
     strStr << "  gl_Position = CC_MVPMatrix * a_position;\n";
@@ -394,8 +428,8 @@ std::string GPUimageBlur::GenerateOptimizedVertexShaderString( int radius, float
     strStr << "  blurCoordinates[0] = a_texCoord.xy;\n";
     for (int i = 0; i < numberOfOptimizedOffsets; ++i)
     {
-      strStr << "blurCoordinates[" << i * 2 + 1 << "] = a_texCoord.xy + texelSpacing * float(" << optimizedGaussianOffsets[i] << ");\n";
-      strStr << "blurCoordinates[" << i * 2 + 2 << "] = a_texCoord.xy - texelSpacing * float(" << optimizedGaussianOffsets[i] << ");\n";
+      strStr << "  blurCoordinates[" << i * 2 + 1 << "] = a_texCoord.xy + texelSpacing * " << optimizedGaussianOffsets[i] << ";\n";
+      strStr << "  blurCoordinates[" << i * 2 + 2 << "] = a_texCoord.xy - texelSpacing * " << optimizedGaussianOffsets[i] << ";\n";
     }
     strStr << "}\n";
     return strStr.str();
@@ -441,11 +475,15 @@ std::string GPUimageBlur::GenerateOptimizedFragmentShaderString( int radius, flo
     int numberOfOptimizedOffsets = fmin(trueNumberOfOptimizedOffsets, 7);
 
     std::stringstream strStr;
+    strStr.precision(6);
+    strStr << std::fixed;
     strStr << "#ifdef GL_ES\n";
-    strStr << "precision mediump float;\n";
-    strStr << "#endif\n";
+    strStr << "varying highp vec2 blurCoordinates[" << numberOfOptimizedOffsets * 2 + 1 << "];\n";
+    strStr << "uniform highp vec2 u_texelOffset;\n";
+    strStr << "#else\n";
     strStr << "varying vec2 blurCoordinates[" << numberOfOptimizedOffsets * 2 + 1 << "];\n";
     strStr << "uniform vec2 u_texelOffset;\n";
+    strStr << "#endif\n";
     strStr << "void main()\n";
     strStr << "{\n";
     strStr << "  gl_FragColor = vec4(0.0);\n";
