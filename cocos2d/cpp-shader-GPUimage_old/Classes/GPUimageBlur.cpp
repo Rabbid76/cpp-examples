@@ -45,12 +45,23 @@ bool GPUimageBlur::init()
 
   m_optimized  = true;
   m_maxSigma   = 16.0;
+  m_stride     = 1;
   m_linear     = true;
- 
+  m_downScaled = false;
+
   bool logShader = false;
   std::string logPath = "c:/temp/log/";
   
   Size layerSize = visibleSize;
+  Size layerSize1 = layerSize;
+  Size layerSize2 = layerSize;
+  if ( m_downScaled )
+  {
+    layerSize1.width *= 0.5f;
+    layerSize1.height *= 0.5f;
+    layerSize2.width *= 0.5f;
+    layerSize2.height *= 0.5f;
+  }
   
   //const char * vertShader = "shader/default.vert";
   //const char * fragShader = "shader/default.frag";
@@ -91,15 +102,16 @@ bool GPUimageBlur::init()
     if ( radius > maxRadius )
       radius = maxRadius;
 
-    std::string vertShader, fragShader;
+    std::string vertShader1, vertShader2, fragShader;
     if ( m_optimized )
     {
-      vertShader = GenerateOptimizedVertexShaderString( radius, sigma );
+      vertShader1 = vertShader2 = GenerateOptimizedVertexShaderString( radius, sigma );
       fragShader = GenerateOptimizedFragmentShaderString( radius, sigma );
     }
     else
     {
-      vertShader = GenerateVertexShaderString( radius, sigma );
+      vertShader1 = GenerateVertexShaderString( m_linear && !m_downScaled, radius, sigma );
+      vertShader2 = GenerateVertexShaderString( m_linear, radius, sigma );
       fragShader = GenerateFragmentShaderString( radius, sigma );
     }
 
@@ -108,7 +120,7 @@ bool GPUimageBlur::init()
       std::string fileName = logPath + "blur_" + std::string(m_optimized ? "opt_" : "std_") +  std::to_string( i );
       std::ofstream v_file;
       v_file.open(fileName + ".vert");
-      v_file << vertShader.c_str() << std::endl;
+      v_file << vertShader1.c_str() << std::endl;
       v_file.close();
       std::ofstream f_file;
       f_file.open(fileName + ".frag");
@@ -117,18 +129,18 @@ bool GPUimageBlur::init()
     }
 
     m_blurShader1.push_back( PostProcessShader() );
-    m_blurShader1.back().init( false, vertShader, fragShader );
+    m_blurShader1.back().init( false, vertShader1, fragShader );
     m_blurShader2.push_back( PostProcessShader() );
-    m_blurShader2.back().init( false, vertShader, fragShader );
+    m_blurShader2.back().init( false, vertShader2, fragShader );
   }
 
-  m_blurPass1 = PostProcess::create( m_linear, layerSize, m_blurShader1.back() );
+  m_blurPass1 = PostProcess::create( m_linear, layerSize1, m_blurShader1.back() );
   m_blurPass1->setVisible( false );
   m_blurPass1->setAnchorPoint(Point::ZERO);
 	m_blurPass1->setPosition(Point::ZERO);
   this->addChild(m_blurPass1, 1);
 
-  m_blurPass2 = PostProcess::create( m_linear, layerSize, m_blurShader2.back() );
+  m_blurPass2 = PostProcess::create( m_linear, layerSize2, m_blurShader2.back() );
   m_blurPass2->setVisible( false );
   m_blurPass2->setAnchorPoint(Point::ZERO);
 	m_blurPass2->setPosition(Point::ZERO);
@@ -193,16 +205,31 @@ void GPUimageBlur::update(float delta)
   m_blurPass1->changeShader( m_blurShader1[blurShaderInx] );
   m_blurPass2->changeShader( m_blurShader2[blurShaderInx] );
 
+  //static bool halfOffset = m_optimized;
+  static bool halfOffset = false;
+
   // blur pass 1
   auto size1 = m_blurPass1->Size();
   if ( blurShaderInx > 0 )
   {
     cocos2d::GLProgramState &pass1state = m_blurPass1->ProgramState();
-    float offsetX = 1.0f / size1.width;
+    float offsetX = float( m_stride ) / size1.width;
+    if ( halfOffset )
+      offsetX *= 0.5;
     pass1state.setUniformVec2( "u_texelOffset", Vec2( offsetX, 0.0f ) ); 
   }
   m_gameLayer->setVisible( true );
+  if ( m_downScaled )
+  {
+    m_gameLayer->setScale( 0.5f );
+    m_gameLayer->setPosition( -size1.width * 0.5f, -size1.height * 0.5f );
+  }
   m_blurPass1->draw( m_gameLayer );
+  if ( m_downScaled )
+  {
+    m_gameLayer->setScale( 1.0f );
+    m_gameLayer->setPosition( 0.0f, 0.0f );
+  }
   m_gameLayer->setVisible( false );
 
   // blur pass 2
@@ -211,16 +238,22 @@ void GPUimageBlur::update(float delta)
   {
     cocos2d::GLProgramState &pass2state = m_blurPass2->ProgramState();
     auto size = m_blurPass2->Size();
-    float offsetY = 1.0f / size1.height;
+    float offsetY = float( m_stride ) / size1.height;
+    if ( halfOffset )
+      offsetY *= 0.5;
     pass2state.setUniformVec2( "u_texelOffset", Vec2( 0.0f, offsetY ) );
   }
   m_blurPass1->setVisible( true );
+  if ( m_downScaled )
+    m_blurPass2->setScale( 1.0f );
   m_blurPass2->draw( m_blurPass1 );
   m_blurPass1->setVisible( false );
+  if ( m_downScaled )
+    m_blurPass2->setScale( sqrt(1.0f/0.5f) );
 }
 
 
-std::string GPUimageBlur::GenerateVertexShaderString( int radius, float sigma )
+std::string GPUimageBlur::GenerateVertexShaderString( bool linearShift, int radius, float sigma )
 {
     if (radius < 1 || sigma <= 0.0)
     {
@@ -264,8 +297,11 @@ std::string GPUimageBlur::GenerateVertexShaderString( int radius, float sigma )
     for (int i = 0; i < radius * 2 + 1; ++i)
     {
         int offsetFromCenter = i - radius;
+        float offsetLinear = ( offsetFromCenter < 0 ) ? ( (float)offsetFromCenter + 0.5f ) : ( (float)offsetFromCenter - 0.5f );
         if (offsetFromCenter == 0)
             strStr << "  blurCoordinates[" << i << "] = a_texCoord.xy;\n";
+        else if ( linearShift )
+           strStr << "  blurCoordinates[" << i << "] = a_texCoord.xy + texelSpacing * " << offsetLinear << ";\n";
         else
            strStr << "  blurCoordinates[" << i << "] = a_texCoord.xy + texelSpacing * " << offsetFromCenter << ";\n";
     }

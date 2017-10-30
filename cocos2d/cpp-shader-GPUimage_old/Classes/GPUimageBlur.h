@@ -23,7 +23,7 @@ public:
 
     virtual void update(float delta) override;
 
-    std::string GenerateVertexShaderString( int radius, float sigma );
+    std::string GenerateVertexShaderString( bool linearShift, int radius, float sigma );
     std::string GenerateFragmentShaderString( int radius, float sigma );
     std::string GenerateOptimizedVertexShaderString( int radius, float sigma );
     std::string GenerateOptimizedFragmentShaderString( int radius, float sigma );
@@ -38,8 +38,10 @@ private:
 
 	bool   m_optimized;
   double m_maxSigma;
+  int    m_stride;
   bool   m_linear;
-  
+  bool   m_downScaled;
+
   std::chrono::high_resolution_clock::time_point _startTime;
 };
 
