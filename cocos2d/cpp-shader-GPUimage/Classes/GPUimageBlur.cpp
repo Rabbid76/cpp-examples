@@ -42,7 +42,7 @@ bool GPUimageBlur::init()
 
   m_optimized  = false;
   m_steps      = 30;
-  m_maxSigma   = 6.0;
+  m_maxSigma   = 10.0;
   m_stride     = 1;
   m_linear     = false;
   m_downScaled = false;
@@ -61,6 +61,27 @@ bool GPUimageBlur::init()
   //const char * vertShader = "shader/default.vert";
   //const char * fragShader = "shader/default.frag";
 
+  // determine hardware limitation for radius, becaus of maximum varying vectors
+  // number of texture coordinates * 2 (vec2)
+  GLint maxVarying;
+  glGetIntegerv( GL_MAX_VARYING_VECTORS, &maxVarying ); 
+  // the limit is:
+  //     vec4:  maxVarying
+  //     vec2:  2 * maxVarying
+  //     float: 4 * maxVarying
+  int maxRadius = 0;
+  if ( m_optimized )
+  {
+    // int numberOfOptimizedOffsets = fmin(radius / 2 + (radius % 2), 7);
+    // varying vec2 blurCoordinates[ numberOfOptimizedOffsets * 2 + 1 ];
+    maxRadius = maxVarying-1;
+  }
+  else
+  {
+    // varying vec2 blurCoordinates[ radius * 2 + 1 ];
+    maxRadius = (maxVarying/2) - 1;
+  }
+
   for ( int i = 0; i < m_steps; ++ i )
   {
     double sigma = 1.0 + ( m_maxSigma - 1.0 ) * (double)i / (double)( m_steps - 1 );
@@ -71,6 +92,10 @@ bool GPUimageBlur::init()
     calculatedSampleRadius += calculatedSampleRadius % 2; // There's nothing to gain from handling odd radius sizes, due to the optimizations I use
     
     int radius = calculatedSampleRadius;
+
+    // restrict radius by maximum varying vectors
+    if ( radius > maxRadius )
+      radius = maxRadius;
 
     std::string vertShader1, vertShader2, fragShader;
     if ( m_optimized )
@@ -206,6 +231,9 @@ std::string GPUimageBlur::GenerateVertexShaderString( bool linearShift, int radi
     if (radius < 1 || sigma <= 0.0)
     {
         std::stringstream strStr;
+        strStr << "#ifdef GL_ES\n";
+        strStr << "precision mediump float;\n";
+        strStr << "#endif\n";
         strStr << "attribute vec4 a_position;\n";
         strStr << "attribute vec4 a_texCoord;\n";
         strStr << "varying vec2 texCoord;\n";
@@ -218,6 +246,9 @@ std::string GPUimageBlur::GenerateVertexShaderString( bool linearShift, int radi
     }
 
     std::stringstream strStr;
+    strStr << "#ifdef GL_ES\n";
+    strStr << "precision mediump float;\n";
+    strStr << "#endif\n";
     strStr << "attribute vec4 a_position;\n";
     strStr << "attribute vec4 a_texCoord;\n";
     strStr << "uniform vec2 u_texelOffset;\n";
@@ -246,6 +277,9 @@ std::string GPUimageBlur::GenerateFragmentShaderString( int radius, float sigma 
     if (radius < 1 || sigma <= 0.0)
     {
         std::stringstream strStr;
+        strStr << "#ifdef GL_ES\n";
+        strStr << "precision mediump float;\n";
+        strStr << "#endif\n";
         strStr << "varying vec2 texCoord;\n";
         strStr << "void main()\n";
         strStr << "{\n";
@@ -268,6 +302,9 @@ std::string GPUimageBlur::GenerateFragmentShaderString( int radius, float sigma 
         standardGaussianWeights[i] = standardGaussianWeights[i] / sumOfWeights;
 
     std::stringstream strStr;
+    strStr << "#ifdef GL_ES\n";
+    strStr << "precision mediump float;\n";
+    strStr << "#endif\n";
     strStr << "varying vec2 blurCoordinates[" << radius * 2 + 1 << "];\n";
     strStr << "void main()\n";
     strStr << "{\n";
@@ -287,6 +324,9 @@ std::string GPUimageBlur::GenerateOptimizedVertexShaderString( int radius, float
     if (radius < 1 || sigma <= 0.0)
     {
         std::stringstream strStr;
+        strStr << "#ifdef GL_ES\n";
+        strStr << "precision mediump float;\n";
+        strStr << "#endif\n";
         strStr << "attribute vec4 a_position;\n";
         strStr << "attribute vec4 a_texCoord;\n";
         strStr << "varying vec2 texCoord;\n";
@@ -333,6 +373,9 @@ std::string GPUimageBlur::GenerateOptimizedVertexShaderString( int radius, float
     //  optimizedGaussianOffsets.back() -= 0.5f;
 
     std::stringstream strStr;
+    strStr << "#ifdef GL_ES\n";
+    strStr << "precision mediump float;\n";
+    strStr << "#endif\n";
     strStr << "attribute vec4 a_position;\n";
     strStr << "attribute vec4 a_texCoord;\n";
     strStr << "uniform vec2 u_texelOffset;\n";
@@ -356,6 +399,9 @@ std::string GPUimageBlur::GenerateOptimizedFragmentShaderString( int radius, flo
     if (radius < 1 || sigma <= 0.0)
     {
         std::stringstream strStr;
+        strStr << "#ifdef GL_ES\n";
+        strStr << "precision mediump float;\n";
+        strStr << "#endif\n";
         strStr << "varying vec2 texCoord;\n";
         strStr << "void main()\n";
         strStr << "{\n";
@@ -387,6 +433,9 @@ std::string GPUimageBlur::GenerateOptimizedFragmentShaderString( int radius, flo
     int numberOfOptimizedOffsets = fmin(trueNumberOfOptimizedOffsets, 7);
 
     std::stringstream strStr;
+    strStr << "#ifdef GL_ES\n";
+    strStr << "precision mediump float;\n";
+    strStr << "#endif\n";
     strStr << "varying vec2 blurCoordinates[" << numberOfOptimizedOffsets * 2 + 1 << "];\n";
     strStr << "uniform vec2 u_texelOffset;\n";
     strStr << "void main()\n";
