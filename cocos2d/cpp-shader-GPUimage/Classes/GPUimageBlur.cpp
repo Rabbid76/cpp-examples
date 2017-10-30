@@ -41,8 +41,8 @@ bool GPUimageBlur::init()
 	this->addChild(m_gameLayer, 0);
 
   m_optimized  = false;
-  m_maxRadius  = 10;
-  m_sigma      = 10.0f;
+  m_steps      = 30;
+  m_maxSigma   = 6.0;
   m_stride     = 1;
   m_linear     = false;
   m_downScaled = false;
@@ -61,19 +61,28 @@ bool GPUimageBlur::init()
   //const char * vertShader = "shader/default.vert";
   //const char * fragShader = "shader/default.frag";
 
-  for ( int i = 0; i <= m_maxRadius; ++ i )
+  for ( int i = 0; i < m_steps; ++ i )
   {
+    double sigma = 1.0 + ( m_maxSigma - 1.0 ) * (double)i / (double)( m_steps - 1 );
+    
+    // Calculate the number of pixels to sample from by setting a bottom limit for the contribution of the outermost pixel
+    float minimumWeightToFindEdgeOfSamplingArea = 1.0/256.0;
+    int calculatedSampleRadius = (int)(floor(sqrt(-2.0 * pow(sigma, 2.0) * log(minimumWeightToFindEdgeOfSamplingArea * sqrt(2.0 * M_PI * pow(sigma, 2.0))) )));
+    calculatedSampleRadius += calculatedSampleRadius % 2; // There's nothing to gain from handling odd radius sizes, due to the optimizations I use
+    
+    int radius = calculatedSampleRadius;
+
     std::string vertShader1, vertShader2, fragShader;
     if ( m_optimized )
     {
-      vertShader1 = vertShader2 = GenerateOptimizedVertexShaderString( i, m_sigma );
-      fragShader = GenerateOptimizedFragmentShaderString( i, m_sigma );
+      vertShader1 = vertShader2 = GenerateOptimizedVertexShaderString( radius, sigma );
+      fragShader = GenerateOptimizedFragmentShaderString( radius, sigma );
     }
     else
     {
-      vertShader1 = GenerateVertexShaderString( m_linear && !m_downScaled, i, m_sigma );
-      vertShader2 = GenerateVertexShaderString( m_linear, i, m_sigma );
-      fragShader = GenerateFragmentShaderString( i, m_sigma );
+      vertShader1 = GenerateVertexShaderString( m_linear && !m_downScaled, radius, sigma );
+      vertShader2 = GenerateVertexShaderString( m_linear, radius, sigma );
+      fragShader = GenerateFragmentShaderString( radius, sigma );
     }
 
     m_blurShader1.push_back( PostProcessShader() );
@@ -149,7 +158,7 @@ void GPUimageBlur::update(float delta)
   blurStrength = (blurStrength - (int)blurStrength ) * 2.0;
   blurStrength = (blurStrength) > 1.0 ? (2.0 - blurStrength) : blurStrength;
 
-  int blurShaderInx = (int)( blurStrength * m_maxRadius + 0.5 );
+  int blurShaderInx = (int)( blurStrength * (int)(m_blurShader1.size()-1) + 0.5 );
   m_blurPass1->changeShader( m_blurShader1[blurShaderInx] );
   m_blurPass2->changeShader( m_blurShader2[blurShaderInx] );
 

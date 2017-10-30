@@ -36,12 +36,12 @@ private:
   PostProcess*                    m_blurPass1;
   PostProcess*                    m_blurPass2;
 
-	bool  m_optimized;
-  int   m_maxRadius;
-  float m_sigma;
-  int   m_stride;
-  bool  m_linear;
-  bool  m_downScaled;
+	bool   m_optimized;
+  int    m_steps;
+  double m_maxSigma;
+  int    m_stride;
+  bool   m_linear;
+  bool   m_downScaled;
 
   std::chrono::high_resolution_clock::time_point _startTime;
 };
