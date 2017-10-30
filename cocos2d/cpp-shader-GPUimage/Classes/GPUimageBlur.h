@@ -37,7 +37,6 @@ private:
   PostProcess*                    m_blurPass2;
 
 	bool   m_optimized;
-  int    m_steps;
   double m_maxSigma;
   int    m_stride;
   bool   m_linear;

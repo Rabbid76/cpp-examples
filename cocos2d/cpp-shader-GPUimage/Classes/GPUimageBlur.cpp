@@ -44,13 +44,12 @@ bool GPUimageBlur::init()
 	this->addChild(m_gameLayer, 0);
 
   m_optimized  = true;
-  m_steps      = 30;
   m_maxSigma   = 16.0;
   m_stride     = 1;
   m_linear     = true;
   m_downScaled = false;
 
-  bool logShader = false;
+  bool logShader = true;
   std::string logPath = "c:/temp/log/";
   
   Size layerSize = visibleSize;
@@ -88,10 +87,10 @@ bool GPUimageBlur::init()
     maxRadius = (maxVarying/2) - 1;
   }
 
-  for ( int i = 0; i < m_steps; ++ i )
+  for ( int i = 1; i <= (int)(m_maxSigma+0.5); ++ i )
   {
-    double sigma = 1.0 + ( m_maxSigma - 1.0 ) * (double)i / (double)( m_steps - 1 );
-    
+    double sigma = (double)i;
+     
     // Calculate the number of pixels to sample from by setting a bottom limit for the contribution of the outermost pixel
     float minimumWeightToFindEdgeOfSamplingArea = 1.0/256.0;
     int calculatedSampleRadius = (int)(floor(sqrt(-2.0 * pow(sigma, 2.0) * log(minimumWeightToFindEdgeOfSamplingArea * sqrt(2.0 * M_PI * pow(sigma, 2.0))) )));
