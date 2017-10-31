@@ -17,14 +17,14 @@ void main()
 #else
   vec2 texelSpacing = u_texelOffset;
 #endif
-  blurCoordinates[0] = a_texCoord.xy + texelSpacing * -4;
-  blurCoordinates[1] = a_texCoord.xy + texelSpacing * -3;
-  blurCoordinates[2] = a_texCoord.xy + texelSpacing * -2;
-  blurCoordinates[3] = a_texCoord.xy + texelSpacing * -1;
+  blurCoordinates[0] = a_texCoord.xy + texelSpacing * -4.000000;
+  blurCoordinates[1] = a_texCoord.xy + texelSpacing * -3.000000;
+  blurCoordinates[2] = a_texCoord.xy + texelSpacing * -2.000000;
+  blurCoordinates[3] = a_texCoord.xy + texelSpacing * -1.000000;
   blurCoordinates[4] = a_texCoord.xy;
-  blurCoordinates[5] = a_texCoord.xy + texelSpacing * 1;
-  blurCoordinates[6] = a_texCoord.xy + texelSpacing * 2;
-  blurCoordinates[7] = a_texCoord.xy + texelSpacing * 3;
-  blurCoordinates[8] = a_texCoord.xy + texelSpacing * 4;
+  blurCoordinates[5] = a_texCoord.xy + texelSpacing * 1.000000;
+  blurCoordinates[6] = a_texCoord.xy + texelSpacing * 2.000000;
+  blurCoordinates[7] = a_texCoord.xy + texelSpacing * 3.000000;
+  blurCoordinates[8] = a_texCoord.xy + texelSpacing * 4.000000;
 }
 

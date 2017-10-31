@@ -256,7 +256,7 @@ std::string GPUimageBlur::GenerateVertexShaderString( int maxVaryingVec4, int ra
         if (offsetFromCenter == 0)
             strStr << "  blurCoordinates[" << i << "] = a_texCoord.xy;\n";
         else
-           strStr << "  blurCoordinates[" << i << "] = a_texCoord.xy + texelSpacing * " << offsetFromCenter << ";\n";
+           strStr << "  blurCoordinates[" << i << "] = a_texCoord.xy + texelSpacing * " << (float)offsetFromCenter << ";\n";
     }
     strStr << "}\n";
     return strStr.str();
