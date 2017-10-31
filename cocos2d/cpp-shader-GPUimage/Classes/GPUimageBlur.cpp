@@ -44,8 +44,8 @@ bool GPUimageBlur::init()
 	this->addChild(m_gameLayer, 0);
 
   m_optimized  = true;
-  m_maxSigma   = 16.0;
-  m_linear     = true;
+  m_maxSigma   = 19.0;
+  m_linear     = m_optimized;
  
   bool logShader = false;
   std::string logPath = "c:/temp/log/";
