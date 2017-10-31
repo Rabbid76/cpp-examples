@@ -57,25 +57,13 @@ bool GPUimageBlur::init()
 
   // determine hardware limitation for radius, becaus of maximum varying vectors
   // number of texture coordinates * 2 (vec2)
-  GLint maxVarying;
-  glGetIntegerv( GL_MAX_VARYING_VECTORS, &maxVarying ); 
+  GLint maxVaryingVec4;
+  glGetIntegerv( GL_MAX_VARYING_VECTORS, &maxVaryingVec4 ); 
   // the limit is:
   //     vec4:  maxVarying
   //     vec2:  2 * maxVarying
   //     float: 4 * maxVarying
-  int maxRadius = 0;
-  if ( m_optimized )
-  {
-    // int numberOfOptimizedOffsets = fmin(radius / 2 + (radius % 2), 7);
-    // varying vec2 blurCoordinates[ numberOfOptimizedOffsets * 2 + 1 ];
-    maxRadius = maxVarying-1;
-  }
-  else
-  {
-    // varying vec2 blurCoordinates[ radius * 2 + 1 ];
-    maxRadius = (maxVarying/2) - 1;
-  }
-
+  
   for ( int i = 1; i <= (int)(m_maxSigma+0.5); ++ i )
   {
     double sigma = (double)i;
@@ -87,20 +75,16 @@ bool GPUimageBlur::init()
     
     int radius = calculatedSampleRadius;
 
-    // restrict radius by maximum varying vectors
-    if ( radius > maxRadius )
-      radius = maxRadius;
-
     std::string vertShader, fragShader;
     if ( m_optimized )
     {
-      vertShader = GenerateOptimizedVertexShaderString( radius, sigma );
-      fragShader = GenerateOptimizedFragmentShaderString( radius, sigma );
+      vertShader = GenerateOptimizedVertexShaderString( maxVaryingVec4, radius, sigma );
+      fragShader = GenerateOptimizedFragmentShaderString( maxVaryingVec4, radius, sigma );
     }
     else
     {
-      vertShader = GenerateVertexShaderString( radius, sigma );
-      fragShader = GenerateFragmentShaderString( radius, sigma );
+      vertShader = GenerateVertexShaderString( maxVaryingVec4, radius, sigma );
+      fragShader = GenerateFragmentShaderString( maxVaryingVec4, radius, sigma );
     }
 
     if ( logShader )
@@ -220,7 +204,7 @@ void GPUimageBlur::update(float delta)
 }
 
 
-std::string GPUimageBlur::GenerateVertexShaderString( int radius, float sigma )
+std::string GPUimageBlur::GenerateVertexShaderString( int maxVaryingVec4, int radius, float sigma )
 {
     if (radius < 1 || sigma <= 0.0)
     {
@@ -238,6 +222,10 @@ std::string GPUimageBlur::GenerateVertexShaderString( int radius, float sigma )
         strStr << "}\n";
         return strStr.str();
     }
+
+    int maxRadius = (maxVaryingVec4/2) - 1;
+    if ( radius > maxRadius )
+      radius = maxRadius;
 
     std::stringstream strStr;
     strStr.precision(6);
@@ -275,7 +263,7 @@ std::string GPUimageBlur::GenerateVertexShaderString( int radius, float sigma )
 }
 
 
-std::string GPUimageBlur::GenerateFragmentShaderString( int radius, float sigma )
+std::string GPUimageBlur::GenerateFragmentShaderString( int maxVaryingVec4, int radius, float sigma )
 {
     if (radius < 1 || sigma <= 0.0)
     {
@@ -290,6 +278,10 @@ std::string GPUimageBlur::GenerateFragmentShaderString( int radius, float sigma 
         strStr << "}\n";
         return strStr.str();
     }
+
+    int maxRadius = (maxVaryingVec4/2) - 1;
+    if ( radius > maxRadius )
+      radius = maxRadius;
 
     std::vector<float> standardGaussianWeights(radius + 1);
     float sumOfWeights = 0.0;
@@ -325,7 +317,7 @@ std::string GPUimageBlur::GenerateFragmentShaderString( int radius, float sigma 
 }
 
 
-std::string GPUimageBlur::GenerateOptimizedVertexShaderString( int radius, float sigma )
+std::string GPUimageBlur::GenerateOptimizedVertexShaderString( int maxVaryingVec4, int radius, float sigma )
 {
     if (radius < 1 || sigma <= 0.0)
     {
@@ -363,7 +355,9 @@ std::string GPUimageBlur::GenerateOptimizedVertexShaderString( int radius, float
     }
     
     // 3. From these weights we calculate the offsets to read interpolated values from
-    int numberOfOptimizedOffsets = fmin(radius / 2 + (radius % 2), 7);
+    int maxOffsetts = maxVaryingVec4 - 1;
+    int trueNumberOfOptimizedOffsets = radius / 2 + (radius % 2);
+    int numberOfOptimizedOffsets = fmin(fmin(trueNumberOfOptimizedOffsets, 7),maxOffsetts);
     std::vector<float> optimizedGaussianOffsets(numberOfOptimizedOffsets);
     
     for (int i = 0; i < numberOfOptimizedOffsets; ++i)
@@ -410,7 +404,7 @@ std::string GPUimageBlur::GenerateOptimizedVertexShaderString( int radius, float
 }
 
 
-std::string GPUimageBlur::GenerateOptimizedFragmentShaderString( int radius, float sigma )
+std::string GPUimageBlur::GenerateOptimizedFragmentShaderString( int maxVaryingVec4, int radius, float sigma )
 {
     if (radius < 1 || sigma <= 0.0)
     {
@@ -445,8 +439,9 @@ std::string GPUimageBlur::GenerateOptimizedFragmentShaderString( int radius, flo
     }
     
     // 3. From these weights we calculate the offsets to read interpolated values from
+    int maxOffsetts = maxVaryingVec4 - 1;
     int trueNumberOfOptimizedOffsets = radius / 2 + (radius % 2);
-    int numberOfOptimizedOffsets = fmin(trueNumberOfOptimizedOffsets, 7);
+    int numberOfOptimizedOffsets = fmin(fmin(trueNumberOfOptimizedOffsets, 7),maxOffsetts);
 
     std::stringstream strStr;
     strStr.precision(6);

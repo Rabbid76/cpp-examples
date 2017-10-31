@@ -13,9 +13,9 @@ void main()
 {
   gl_Position = CC_MVPMatrix * a_position;
 #ifdef GL_ES
-highp vec2 texelSpacing = u_texelOffset;
+  highp vec2 texelSpacing = u_texelOffset;
 #else
-vec2 texelSpacing = u_texelOffset;
+  vec2 texelSpacing = u_texelOffset;
 #endif
   blurCoordinates[0] = a_texCoord.xy;
   blurCoordinates[1] = a_texCoord.xy + texelSpacing * 1.492347;
