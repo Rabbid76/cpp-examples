@@ -256,10 +256,11 @@ std::string GPUimageBlur::GenerateVertexShaderString( int radius, float sigma )
     strStr << "void main()\n";
     strStr << "{\n";
     strStr << "  gl_Position = CC_MVPMatrix * a_position;\n";
+    //strStr << "  gl_Position = a_texCoord * 2.0 - 1.0;\n";
     strStr << "#ifdef GL_ES\n";
-    strStr << "highp vec2 texelSpacing = u_texelOffset;\n";
+    strStr << "  highp vec2 texelSpacing = u_texelOffset;\n";
     strStr << "#else\n";
-    strStr << "vec2 texelSpacing = u_texelOffset;\n";
+    strStr << "  vec2 texelSpacing = u_texelOffset;\n";
     strStr << "#endif\n";
     for (int i = 0; i < radius * 2 + 1; ++i)
     {
@@ -392,10 +393,11 @@ std::string GPUimageBlur::GenerateOptimizedVertexShaderString( int radius, float
     strStr << "void main()\n";
     strStr << "{\n";
     strStr << "  gl_Position = CC_MVPMatrix * a_position;\n";
+    //strStr << "  gl_Position = a_texCoord * 2.0 - 1.0;\n";
     strStr << "#ifdef GL_ES\n";
-    strStr << "highp vec2 texelSpacing = u_texelOffset;\n";
+    strStr << "  highp vec2 texelSpacing = u_texelOffset;\n";
     strStr << "#else\n";
-    strStr << "vec2 texelSpacing = u_texelOffset;\n";
+    strStr << "  vec2 texelSpacing = u_texelOffset;\n";
     strStr << "#endif\n";
     strStr << "  blurCoordinates[0] = a_texCoord.xy;\n";
     for (int i = 0; i < numberOfOptimizedOffsets; ++i)
