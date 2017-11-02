@@ -447,9 +447,8 @@ std::string GPUimageBlur::GenerateOptimizedFragmentShaderString( int maxVaryingV
     strStr.precision(6);
     strStr << std::fixed;
     strStr << "#ifdef GL_ES\n";
-    //strStr << "varying highp vec2 blurCoordinates[" << numberOfOptimizedOffsets * 2 + 1 << "];\n";
+    strStr << "varying highp vec2 blurCoordinates[" << numberOfOptimizedOffsets * 2 + 1 << "];\n";
     //strStr << "uniform highp vec2 u_texelOffset;\n";
-    strStr << "varying vec2 blurCoordinates[" << numberOfOptimizedOffsets * 2 + 1 << "];\n";
     strStr << "uniform vec2 u_texelOffset;\n";
     strStr << "#else\n";
     strStr << "varying vec2 blurCoordinates[" << numberOfOptimizedOffsets * 2 + 1 << "];\n";
